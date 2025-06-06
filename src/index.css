@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  #root {
+    height: 100vh;
+    width: 100vw;
+  }
+}
+
+@layer components {
+  .mapboxgl-popup-content {
+    @apply rounded-lg shadow-xl border border-gray-800/20 p-4 max-w-sm bg-gray-900/95 backdrop-blur-sm text-white;
+    font-family: 'Inter', system-ui, sans-serif !important;
+  }
+  
+  .mapboxgl-popup-tip {
+    @apply border-t-gray-900;
+  }
+  
+  .ttc-popup .mapboxgl-popup-content {
+    @apply bg-gray-900/95 backdrop-blur-sm text-white rounded-lg shadow-xl border border-gray-700/50 p-0;
+    min-width: 250px;
+    max-width: 320px;
+  }
+  
+  .ttc-popup .mapboxgl-popup-close-button {
+    @apply text-gray-400 hover:text-white transition-colors;
+    font-size: 18px;
+    right: 8px;
+    top: 8px;
+  }
+  
+  .dashboard-card {
+    @apply bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-700/50 p-4 text-white;
+  }
+  
+  .layer-toggle {
+    @apply flex items-center justify-between p-3 hover:bg-gray-800/50 rounded-md transition-colors cursor-pointer;
+  }
+  
+  .layer-toggle.active {
+    @apply bg-gray-700/50 border-l-4 border-gray-400;
+  }
+}
+
+/* Mapbox GL overrides */
+.mapboxgl-ctrl-group {
+  @apply shadow-xl border border-gray-700/50 rounded-lg backdrop-blur-sm bg-gray-900/90;
+}
+
+.mapboxgl-ctrl-group button {
+  @apply hover:bg-gray-800/50 transition-colors text-white;
+} 
