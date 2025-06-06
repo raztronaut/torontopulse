@@ -45,10 +45,11 @@
   
   .layer-toggle {
     @apply flex items-center justify-between p-3 hover:bg-gray-800/50 rounded-md transition-colors cursor-pointer;
+    min-height: 64px;
   }
   
   .layer-toggle.active {
-    @apply bg-gray-700/50 border-l-4 border-gray-400;
+    @apply bg-gray-700/50 border-l-4 border-blue-500;
   }
 }
 

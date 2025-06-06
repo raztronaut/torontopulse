@@ -54,7 +54,7 @@ export function DashboardPanel({
 
   return (
     <div className="absolute top-4 left-4 z-10">
-      <div className="dashboard-card w-80 max-h-96 overflow-hidden">
+      <div className="dashboard-card w-80 max-h-[calc(100vh-2rem)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
@@ -126,7 +126,7 @@ export function DashboardPanel({
             {/* Layer Controls */}
             <div>
               <h4 className="text-sm font-medium text-gray-300 mb-2">Data Layers</h4>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="space-y-2">
                 {layers.map((layer) => (
                   <div
                     key={layer.id}
@@ -146,21 +146,23 @@ export function DashboardPanel({
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-3 h-3 rounded-full flex-shrink-0"
                         style={{ backgroundColor: layer.color }}
                       ></div>
-                      <div
-                        className={`w-10 h-6 rounded-full transition-colors ${
-                          layer.enabled ? 'bg-gray-500' : 'bg-gray-700'
-                        }`}
-                      >
+                      <div className="relative">
                         <div
-                          className={`w-4 h-4 bg-gray-200 rounded-full shadow transform transition-transform ${
-                            layer.enabled ? 'translate-x-5 mt-1' : 'translate-x-1 mt-1'
+                          className={`w-11 h-6 rounded-full transition-colors duration-200 ${
+                            layer.enabled ? 'bg-blue-600' : 'bg-gray-600'
                           }`}
-                        ></div>
+                        >
+                          <div
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                              layer.enabled ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          ></div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -2,6 +2,8 @@
 
 A modern, interactive 3D city dashboard for Toronto built with React, TypeScript, and Mapbox GL JS. Toronto Pulse visualizes real-time urban data including public transit, road conditions, bike share availability, and environmental metrics in an immersive 3D interface.
 
+![Toronto Pulse Dashboard Screenshot](./assets/toronto-pulse-screenshot.png)
+
 ![Toronto Pulse Dashboard](https://img.shields.io/badge/Status-Active-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white) ![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB) ![Mapbox](https://img.shields.io/badge/Mapbox-000000?logo=mapbox&logoColor=white)
 
 ## 🚀 Features
