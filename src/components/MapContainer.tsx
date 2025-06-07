@@ -625,6 +625,66 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
             </div>
           </div>
         );
+      case 'automated-speed-enforcement-locations':
+        return (
+          <div className="min-w-[250px]">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-4 h-4 rounded-full bg-red-600 flex-shrink-0"></div>
+              <h3 className="font-bold text-white text-lg">
+                📷 Speed Enforcement Camera
+              </h3>
+            </div>
+            
+            <div className="space-y-2">
+              {properties.location && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Location</span>
+                  <span className="text-white font-semibold">{properties.location}</span>
+                </div>
+              )}
+              
+              {properties.status && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Status</span>
+                  <span className={`font-semibold capitalize ${
+                    properties.status.toLowerCase() === 'active' ? 'text-green-400' :
+                    properties.status.toLowerCase() === 'planned' ? 'text-yellow-400' :
+                    'text-gray-300'
+                  }`}>
+                    {properties.status}
+                  </span>
+                </div>
+              )}
+              
+              {properties.ward && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Ward</span>
+                  <span className="text-white font-semibold">{properties.ward}</span>
+                </div>
+              )}
+              
+              {(properties.id || properties._id) && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Camera ID</span>
+                  <span className="text-white font-mono text-sm">{properties.id || properties._id}</span>
+                </div>
+              )}
+              
+              {properties.location_code && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Location Code</span>
+                  <span className="text-white font-mono text-sm">{properties.location_code}</span>
+                </div>
+              )}
+              
+              <div className="pt-2 border-t border-gray-600">
+                <div className="text-xs text-gray-400 text-center">
+                  Automated Speed Enforcement Location
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       case 'red-light-cameras':
         return (
           <div className="min-w-[250px]">

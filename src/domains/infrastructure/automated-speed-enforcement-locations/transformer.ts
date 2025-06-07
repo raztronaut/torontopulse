@@ -64,6 +64,7 @@ export class AutomatedSpeedEnforcementLocationsTransformer implements DataTransf
         coordinates
       },
       properties: {
+        layerId: 'automated-speed-enforcement-locations',
         id: item._id || item.id,
         location_code: item.Location_Code,
         ward: item.ward,
