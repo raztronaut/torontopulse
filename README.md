@@ -10,7 +10,7 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 
 Toronto Pulse now includes an intelligent AI assistant that can answer questions about Toronto city data using natural language. Ask about transit, infrastructure, events, or any city data and get real-time, data-driven responses.
 
-![AI City Assistant](./ai.png@ai.png)
+![AI City Assistant](./assets/ai.png)
 
 ### AI Features
 - **Natural Language Queries**: Ask questions in plain English about Toronto city data
