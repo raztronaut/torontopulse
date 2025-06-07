@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "id": "red-light-cameras",
+    "name": "Red Light Cameras",
+    "domain": "infrastructure",
+    "version": "1.0.0",
+    "description": "Red Light Camera (RLC) is an automated system which photographs vehicles that run red lights. Generally, the camera is triggered when a vehicle enters the intersection (passes the stop-bar) after the traffic signal has turned red. The camera will take two time-stamped photographs of the vehicle: one is taken as the vehicle approaches the stop line and the second is taken as the vehicle moves through the intersection. RLC is focused on altering driver behaviour to eliminate red-light running and increase safety for all road users. \r\n\r\nThis dataset identifies the intersections in Toronto where Red Light Cameras are located.\r\n\r\nFor a list of historical (including de-commissioned) locations, please visit the Red Light Camera website or contact us at the email listed.\r\n\r\n",
+    "refreshInterval": 300000,
+    "reliability": "high",
+    "tags": [],
+    "author": "Toronto Pulse CLI",
+    "dataLicense": "Open Government Licence - Toronto"
+  },
+  "api": {
+    "type": "json",
+    "baseUrl": "/api/toronto-open-data/api/3/action/datastore_search?resource_id=b57a31a1-5ee6-43e3-bfb9-206ebe93066d",
+    "authentication": null,
+    "rateLimit": {
+      "requests": 60,
+      "window": 60000
+    },
+    "timeout": 10000
+  },
+  "transform": {
+    "strategy": "json-to-geojson",
+    "mappings": {
+      "latitude": "$.lat",
+      "longitude": "$.lon",
+      "id": "$.id",
+      "name": "$.name"
+    }
+  },
+  "visualization": {
+    "layer": {
+      "type": "circle",
+      "paint": {
+        "circle-radius": 6,
+        "circle-color": "#dc2626",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff"
+      }
+    },
+    "popup": {
+      "template": "red-light-cameras-popup"
+    }
+  },
+  "cache": {
+    "strategy": "semi-static",
+    "ttl": 300000,
+    "storage": "memory"
+  }
+}

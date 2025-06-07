@@ -61,6 +61,16 @@ export const LAYER_CONFIGS: LayerConfig[] = [
     source: 'https://open.toronto.ca/dataset/automated-speed-enforcement-locations/',
     refreshInterval: 604800000, // 7 days (weekly data)
   },
+  {
+    id: 'red-light-cameras',
+    name: 'Red Light Cameras',
+    description: 'Red Light Camera locations at intersections across Toronto',
+    icon: 'Camera',
+    color: '#ef4444', // Bright red
+    enabled: false,
+    source: 'https://open.toronto.ca/dataset/red-light-cameras/',
+    refreshInterval: 86400000, // 24 hours (daily data)
+  },
 ];
 
 export const DASHBOARD_MODES: DashboardMode[] = [
@@ -77,7 +87,7 @@ export const DASHBOARD_MODES: DashboardMode[] = [
     name: 'Infrastructure',
     description: 'Roads, construction, and city services',
     icon: 'Building',
-    layers: ['road-restrictions', 'automated-speed-enforcement-locations'],
+    layers: ['road-restrictions', 'automated-speed-enforcement-locations', 'red-light-cameras'],
     color: '#374151', // Medium gray
   },
   {
@@ -93,7 +103,7 @@ export const DASHBOARD_MODES: DashboardMode[] = [
     name: 'All Data',
     description: 'View all available data layers',
     icon: 'Globe',
-    layers: ['ttc-vehicles', 'road-restrictions', 'bike-share', 'beach-water-quality', 'toronto-beaches-observations', 'automated-speed-enforcement-locations'],
+    layers: ['ttc-vehicles', 'road-restrictions', 'bike-share', 'beach-water-quality', 'toronto-beaches-observations', 'automated-speed-enforcement-locations', 'red-light-cameras'],
     color: '#6b7280', // Lighter gray
   },
 ];

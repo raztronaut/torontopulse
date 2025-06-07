@@ -10,6 +10,7 @@ export type LayerData = {
   'beach-water-quality': BeachWaterQuality[];
   'toronto-beaches-observations': any[]; // Beach observation data
   'automated-speed-enforcement-locations': any[]; // Speed enforcement camera locations
+  'red-light-cameras': any[]; // Red light camera locations
 };
 
 // Map layer IDs to plugin IDs
@@ -25,6 +26,8 @@ const getPluginId = (layerId: string): string => {
       return 'toronto-beaches-observations';
     case 'automated-speed-enforcement-locations':
       return 'automated-speed-enforcement-locations';
+    case 'red-light-cameras':
+      return 'red-light-cameras';
     default:
       return layerId;
   }
@@ -36,7 +39,7 @@ export function useDataLayer<T extends keyof LayerData>(
   refreshInterval?: number
 ) {
   // Try to use the new plugin system for supported layers
-  const isPluginSupported = layerId === 'ttc-vehicles' || layerId === 'bike-share' || layerId === 'road-restrictions' || layerId === 'toronto-beaches-observations' || layerId === 'automated-speed-enforcement-locations';
+  const isPluginSupported = layerId === 'ttc-vehicles' || layerId === 'bike-share' || layerId === 'road-restrictions' || layerId === 'toronto-beaches-observations' || layerId === 'automated-speed-enforcement-locations' || layerId === 'red-light-cameras';
   
   // Use new plugin system for supported layers
   const pluginResult = useDataLayerV2(

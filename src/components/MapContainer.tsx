@@ -65,6 +65,8 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
     enabledLayers.some(l => l.id === 'toronto-beaches-observations'), 86400000);
   const speedEnforcementData = useDataLayer('automated-speed-enforcement-locations', 
     enabledLayers.some(l => l.id === 'automated-speed-enforcement-locations'), 604800000);
+  const redLightCamerasData = useDataLayer('red-light-cameras', 
+    enabledLayers.some(l => l.id === 'red-light-cameras'), 86400000);
 
   const onMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -240,6 +242,21 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
           'circle-stroke-color': '#ffffff',
           'circle-opacity': 0.8
         };
+      case 'red-light-cameras':
+        return {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            8, 4,
+            12, 6,
+            16, 8
+          ] as any,
+          'circle-color': '#ef4444', // Bright red for red light cameras
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 0.8
+        };
       default:
         return {
           'circle-radius': 5,
@@ -272,6 +289,9 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
           break;
         case 'automated-speed-enforcement-locations':
           geoJSON = speedEnforcementData.geoJSON;
+          break;
+        case 'red-light-cameras':
+          geoJSON = redLightCamerasData.geoJSON;
           break;
       }
 
@@ -605,6 +625,39 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
             </div>
           </div>
         );
+      case 'red-light-cameras':
+        return (
+          <div className="min-w-[250px]">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-4 h-4 rounded-full bg-red-500 flex-shrink-0"></div>
+              <h3 className="font-bold text-white text-lg">
+                🚦 Red Light Camera
+              </h3>
+            </div>
+            
+            <div className="space-y-2">
+              {properties.name && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Location</span>
+                  <span className="text-white font-semibold">{properties.name}</span>
+                </div>
+              )}
+              
+              {properties.id && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Camera ID</span>
+                  <span className="text-white font-mono text-sm">{properties.id}</span>
+                </div>
+              )}
+              
+              <div className="pt-2 border-t border-gray-600">
+                <div className="text-xs text-gray-400 text-center">
+                  Red Light Camera Location
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return <div className="text-white">Feature details</div>;
     }
@@ -683,7 +736,7 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
       )}
 
       {/* Data Loading indicator */}
-      {mapLoaded && (ttcData.loading || roadData.loading || bikeData.loading || beachData.loading) && (
+      {mapLoaded && (ttcData.loading || roadData.loading || bikeData.loading || beachData.loading || beachObservationsData.loading || speedEnforcementData.loading || redLightCamerasData.loading) && (
         <div className="absolute top-4 right-4 bg-gray-900/90 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-700/50">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-300"></div>

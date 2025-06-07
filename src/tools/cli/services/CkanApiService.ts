@@ -26,7 +26,7 @@ export interface CkanResource {
 export class CkanApiService {
   private readonly baseUrl = 'https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action';
 
-  async discoverDataset(url: string): Promise<DatasetMetadata> {
+  async discoverDataset(url: string): Promise<{ metadata: DatasetMetadata; analysis: any }> {
     const datasetId = this.extractDatasetId(url);
     if (!datasetId) {
       throw new Error('Could not extract dataset ID from URL');
@@ -43,7 +43,7 @@ export class CkanApiService {
     const sampleData = await this.sampleResourceData(bestResource);
     const fieldMetadata = this.analyzeFields(sampleData);
     
-    return {
+    const metadata: DatasetMetadata = {
       id: packageData.name,
       name: packageData.title,
       description: packageData.notes || '',
@@ -61,6 +61,16 @@ export class CkanApiService {
       format: bestResource.format.toLowerCase(),
       size: bestResource.size
     };
+
+    // Create analysis object
+    const analysis = {
+      fields: fieldMetadata,
+      recordCount: sampleData.length,
+      geoStrategy: this.detectGeoStrategy(fieldMetadata, bestResource.format),
+      apiUrl: metadata.accessUrl
+    };
+
+    return { metadata, analysis };
   }
 
   async validateResourceAccess(resourceId: string): Promise<AccessInfo> {
@@ -122,17 +132,32 @@ export class CkanApiService {
   }
 
   private async getPackageData(datasetId: string): Promise<CkanPackage> {
-    const response = await fetch(`${this.baseUrl}/package_show?id=${datasetId}`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch package data: ${response.statusText}`);
-    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    const data = await response.json();
-    if (!data.success) {
-      throw new Error(`CKAN API error: ${data.error?.message || 'Unknown error'}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/package_show?id=${datasetId}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch package data: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(`CKAN API error: ${data.error?.message || 'Unknown error'}`);
+      }
+      
+      return data.result;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out after 10 seconds');
+      }
+      throw error;
     }
-    
-    return data.result;
   }
 
   private async getResourceData(resourceId: string): Promise<CkanResource> {
@@ -168,11 +193,32 @@ export class CkanApiService {
   private async sampleResourceData(resource: CkanResource): Promise<any[]> {
     try {
       if (resource.datastore_active) {
-        const response = await fetch(
-          `${this.baseUrl}/datastore_search?resource_id=${resource.id}&limit=5`
-        );
-        const data = await response.json();
-        return data.result?.records || [];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        try {
+          const response = await fetch(
+            `${this.baseUrl}/datastore_search?resource_id=${resource.id}&limit=5`,
+            { signal: controller.signal }
+          );
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            console.warn(`Datastore API returned ${response.status}: ${response.statusText}`);
+            return [];
+          }
+          
+          const data = await response.json();
+          return data.result?.records || [];
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            console.warn('Datastore request timed out after 10 seconds');
+          } else {
+            console.warn('Datastore fetch error:', fetchError);
+          }
+          return [];
+        }
       } else {
         // For direct URLs, we'd need to handle different formats
         // For now, return empty array and rely on user input
@@ -311,5 +357,53 @@ export class CkanApiService {
     } catch {
       return true; // Assume CORS required if URL parsing fails
     }
+  }
+
+  private detectGeoStrategy(fields: FieldMetadata[], format: string): any {
+    // Check for coordinate fields
+    const latField = fields.find(f => f.semanticType === 'latitude');
+    const lonField = fields.find(f => f.semanticType === 'longitude');
+    
+    if (latField && lonField) {
+      return {
+        type: 'coordinates',
+        latField: latField.name,
+        lonField: lonField.name
+      };
+    }
+
+    // Check for address fields
+    const addressField = fields.find(f => f.semanticType === 'location');
+    if (addressField) {
+      return {
+        type: 'address',
+        addressField: addressField.name
+      };
+    }
+
+    // Check for location name fields
+    const locationField = fields.find(f => 
+      f.name.toLowerCase().includes('location') || 
+      f.name.toLowerCase().includes('place') ||
+      f.name.toLowerCase().includes('intersection')
+    );
+    if (locationField) {
+      return {
+        type: 'location-name',
+        locationField: locationField.name
+      };
+    }
+
+    // For GeoJSON format, assume it has built-in geometry
+    if (format.toLowerCase() === 'geojson') {
+      return {
+        type: 'geojson',
+        geometryField: 'geometry'
+      };
+    }
+
+    return {
+      type: 'none'
+    };
   }
 } 

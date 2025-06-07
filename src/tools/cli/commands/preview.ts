@@ -45,7 +45,8 @@ export async function previewDataset(options: PreviewOptions): Promise<void> {
     // Discover dataset
     const spinner = ora('Discovering dataset...').start();
     const ckanService = new CkanApiService();
-    const metadata = await ckanService.discoverDataset(url!);
+    const discovery = await ckanService.discoverDataset(url!);
+    const metadata = discovery.metadata;
     spinner.succeed(`Discovered: ${metadata.name}`);
 
     // Analyze data structure
@@ -59,7 +60,7 @@ export async function previewDataset(options: PreviewOptions): Promise<void> {
     // Detect geographic patterns
     spinner.start('Detecting geographic patterns...');
     const geoService = new GeoMappingService();
-    const geoStrategy = await geoService.detectGeographicData(enhancedFields);
+    const geoStrategy = discovery.analysis.geoStrategy || await geoService.detectGeographicData(enhancedFields);
     spinner.succeed(`Geographic strategy: ${geoStrategy.type}`);
 
     // Recognize Toronto patterns

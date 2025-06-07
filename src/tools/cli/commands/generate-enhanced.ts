@@ -7,6 +7,7 @@ import { GeoMappingService } from '../services/GeoMappingService.js';
 import { IntegrationService } from '../services/IntegrationService.js';
 import { ValidationService } from '../services/ValidationService.js';
 import { generatePlugin } from '../generators/plugin-generator.js';
+import { IntegrationService } from '../services/IntegrationService.js';
 import { 
   PluginConfig, 
   DatasetMetadata, 
@@ -69,6 +70,15 @@ export async function generateDataSourceEnhanced(options: EnhancedGenerateOption
   console.log(chalk.blue('🚀 Toronto Pulse Data Integration (Enhanced)'));
   console.log(chalk.gray('One-command integration from URL to working browser layer\n'));
 
+  // Debug: Check if URL is provided
+  if (!options.url) {
+    console.error(chalk.red('❌ URL is required for enhanced generation'));
+    console.log(chalk.gray('Usage: npm run tp generate:datasource --url="<toronto-open-data-url>" --auto-integrate'));
+    process.exit(1);
+  }
+
+  console.log(chalk.gray(`🔗 Processing URL: ${options.url}`));
+
   const tracker = new ProgressTracker();
   
   // Define all steps
@@ -96,6 +106,7 @@ export async function generateDataSourceEnhanced(options: EnhancedGenerateOption
     console.log(chalk.gray(`   Resource ID: ${discovery.metadata.resourceId}`));
     console.log(chalk.gray(`   Fields: ${discovery.analysis.fields.length}`));
     console.log(chalk.gray(`   Records: ${discovery.analysis.recordCount}`));
+    console.log(chalk.gray(`   API URL: ${discovery.metadata.accessUrl}`));
 
     // Phase 2: Pre-Integration Validation
     tracker.startStep(1);
@@ -237,9 +248,14 @@ async function validatePreIntegration(discovery: any): Promise<{ valid: boolean;
 
   // Validate API accessibility
   try {
-    const response = await fetch(discovery.metadata.apiUrl, { method: 'HEAD' });
-    if (!response.ok) {
-      errors.push(`API not accessible: HTTP ${response.status}`);
+    const apiUrl = discovery.metadata.accessUrl || discovery.metadata.apiUrl;
+    if (!apiUrl) {
+      errors.push('No API URL found in metadata');
+    } else {
+      const response = await fetch(apiUrl, { method: 'HEAD' });
+      if (!response.ok) {
+        errors.push(`API not accessible: HTTP ${response.status}`);
+      }
     }
   } catch (error) {
     errors.push(`API connection failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -264,11 +280,11 @@ async function validatePreIntegration(discovery: any): Promise<{ valid: boolean;
 
 async function generateConfiguration(discovery: any, options: EnhancedGenerateOptions): Promise<any> {
   const geoService = new GeoMappingService();
-  const geoMapping = geoService.generateGeoMapping(discovery.analysis);
+  const geoStrategy = discovery.analysis.geoStrategy || await geoService.detectGeographicData(discovery.analysis.fields);
 
   return {
     metadata: {
-      id: options.layerId || discovery.metadata.resourceId,
+      id: options.layerId || discovery.metadata.id,
       name: options.name || discovery.metadata.name,
       description: discovery.metadata.description,
       domain: options.domain || 'infrastructure',
@@ -279,7 +295,7 @@ async function generateConfiguration(discovery: any, options: EnhancedGenerateOp
     },
     api: {
       type: 'json',
-      baseUrl: discovery.metadata.apiUrl,
+      baseUrl: discovery.metadata.accessUrl,
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -291,9 +307,9 @@ async function generateConfiguration(discovery: any, options: EnhancedGenerateOp
       }
     },
     transform: {
-      strategy: geoMapping.strategy,
-      mappings: geoMapping.mappings,
-      arrayProperty: discovery.analysis.arrayProperty
+      strategy: geoStrategy.type,
+      geoStrategy: geoStrategy,
+      arrayProperty: 'result.records'
     },
     visualization: {
       type: 'point',
@@ -331,8 +347,23 @@ async function generateEnhancedPlugin(
   tracker: ProgressTracker
 ): Promise<void> {
   
+  // Convert config to PluginConfig format
+  const pluginConfig: PluginConfig = {
+    name: config.metadata.name,
+    domain: config.metadata.domain,
+    description: config.metadata.description,
+    apiUrl: config.api.baseUrl,
+    apiType: 'json',
+    refreshInterval: config.metadata.refreshInterval,
+    reliability: config.metadata.reliability,
+    tags: config.metadata.tags || [],
+    author: config.metadata.author,
+    dataLicense: 'Open Government Licence - Toronto',
+    arrayProperty: config.transform.arrayProperty
+  };
+
   // Generate plugin with enhanced transformers
-  await generatePlugin(config);
+  await generatePlugin(pluginConfig);
 
   // Enhance transformer with geographic logic
   if (analysis.geoStrategy.type !== 'none') {
@@ -348,7 +379,32 @@ async function enhanceTransformerWithGeoLogic(config: any, analysis: any): Promi
 
 async function integrateWithApplication(config: any): Promise<void> {
   const integrationService = new IntegrationService();
-  await integrationService.integratePlugin(config);
+  
+  const dataSourceConfig = {
+    pluginId: config.metadata.id,
+    layerId: config.metadata.id,
+    metadata: {
+      id: config.metadata.id,
+      name: config.metadata.name,
+      description: config.metadata.description,
+      resourceId: config.metadata.id,
+      accessUrl: config.api.baseUrl,
+      dataType: 'geospatial',
+      geoFields: [],
+      timeFields: [],
+      valueFields: [],
+      updateFrequency: 'daily',
+      corsRequired: true,
+      tags: config.metadata.tags || [],
+      organization: 'City of Toronto',
+      lastModified: new Date().toISOString(),
+      format: 'json'
+    },
+    domain: config.metadata.domain,
+    refreshInterval: config.metadata.refreshInterval
+  };
+  
+  await integrationService.integrateDataSource(dataSourceConfig);
 }
 
 // Legacy function for backward compatibility

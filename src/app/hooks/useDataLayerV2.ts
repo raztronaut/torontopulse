@@ -65,8 +65,14 @@ export function useDataLayerV2(
   }, [loader]);
 
   const fetchData = useCallback(async () => {
-    if (!enabled || !pluginsLoaded) return;
+    console.log(`🔍 useDataLayerV2: fetchData called for ${layerId}, enabled: ${enabled}, pluginsLoaded: ${pluginsLoaded}`);
     
+    if (!enabled || !pluginsLoaded) {
+      console.log(`⏭️ useDataLayerV2: Skipping fetch for ${layerId} - enabled: ${enabled}, pluginsLoaded: ${pluginsLoaded}`);
+      return;
+    }
+    
+    console.log(`🚀 useDataLayerV2: Starting fetch for ${layerId}`);
     setLoading(true);
     setError(null);
     
@@ -76,13 +82,15 @@ export function useDataLayerV2(
         throw new Error(`Plugin ${layerId} not found`);
       }
 
+      console.log(`✅ useDataLayerV2: Plugin ${layerId} found, fetching data...`);
       const data = await service.fetchData(layerId);
+      console.log(`✅ useDataLayerV2: Data fetched for ${layerId}, features: ${data.features?.length || 0}`);
       setGeoJSON(data);
       setLastUpdated(new Date());
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch data';
       setError(errorMessage);
-      console.error(`Error fetching ${layerId}:`, err);
+      console.error(`❌ useDataLayerV2: Error fetching ${layerId}:`, err);
     } finally {
       setLoading(false);
     }
