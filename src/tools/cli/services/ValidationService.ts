@@ -1,5 +1,7 @@
 import { PluginConfig, DatasetMetadata, ValidationResult, TestResult } from '../types.js';
 import { TorontoDataService } from './TorontoDataService.js';
+import fs from 'fs-extra';
+import path from 'path';
 
 export interface ValidationOptions {
   plugin?: string;
@@ -9,89 +11,460 @@ export interface ValidationOptions {
   verbose?: boolean;
 }
 
-export interface IntegrationValidationResult {
-  plugin: string;
+export interface BrowserValidationResult {
   valid: boolean;
-  tests: TestResult[];
   errors: string[];
   warnings: string[];
-  suggestions: string[];
-  performance: {
-    apiResponseTime: number;
-    dataSize: number;
-    transformationTime: number;
-  };
+  details?: any;
+}
+
+export interface PluginHealth {
+  id: string;
+  name: string;
+  status: 'healthy' | 'warning' | 'error';
+  lastFetch: Date | null;
+  fetchTime: number;
+  dataCount: number;
+  issues: string[];
 }
 
 export class ValidationService {
-  private torontoService = new TorontoDataService();
+  private torontoDataService = new TorontoDataService();
 
-  async validateIntegration(config: PluginConfig, options: ValidationOptions = {}): Promise<IntegrationValidationResult> {
-    const tests: TestResult[] = [];
-    const errors: string[] = [];
-    const warnings: string[] = [];
-    const suggestions: string[] = [];
+  async validatePlugin(pluginId: string, options: ValidationOptions = {}): Promise<ValidationResult> {
+    const results: TestResult[] = [];
+    
+    try {
+      // Load plugin configuration
+      const config = await this.loadPluginConfig(pluginId);
+      
+      // Run all validation tests
+      results.push(await this.validatePluginStructure(pluginId));
+      results.push(await this.testApiAccess(config));
+      results.push(await this.validateDataStructure(config));
+      
+      // Browser compatibility tests
+      if (options.verbose) {
+        results.push(await this.validateBrowserCompatibility(pluginId));
+        results.push(await this.validateProxyConfiguration(pluginId));
+        results.push(await this.validateCORSCompliance(pluginId));
+      }
+      
+      const success = results.every(r => r.success);
+      const errors = results.filter(r => !r.success).map(r => r.message);
+      
+      return {
+        valid: success,
+        errors,
+        warnings: [],
+        details: { tests: results }
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [`Validation failed: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: []
+      };
+    }
+  }
 
-    console.log(`🔍 Validating integration for ${config.name}...`);
+  /**
+   * Comprehensive validation including browser compatibility
+   */
+  async validateIntegration(pluginId: string): Promise<ValidationResult> {
+    const results = await Promise.all([
+      this.validatePluginStructure(pluginId),
+      this.validateNodeJsCompatibility(pluginId),
+      this.validateBrowserCompatibility(pluginId),
+      this.validateProxyConfiguration(pluginId)
+    ]);
 
-    // Test API access
-    const apiTest = await this.testApiAccess(config);
-    tests.push(apiTest);
-    if (!apiTest.success) {
-      errors.push(apiTest.message || 'API access failed');
+    return this.combineValidationResults(results);
+  }
+
+  /**
+   * Validate CORS compliance for a plugin
+   */
+  async validateCORSCompliance(pluginId: string): Promise<BrowserValidationResult> {
+    try {
+      const config = await this.loadPluginConfig(pluginId);
+      return await this.testCORSHeaders(config.api.baseUrl);
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [`CORS validation failed: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: []
+      };
+    }
+  }
+
+  /**
+   * Test actual browser data loading
+   */
+  async validateBrowserCompatibility(pluginId: string): Promise<BrowserValidationResult> {
+    try {
+      // Load plugin configuration
+      const config = await this.loadPluginConfig(pluginId);
+      
+      // Test URL accessibility from browser context
+      const urlTest = await this.testBrowserUrlAccess(config.api.baseUrl);
+      
+      // Validate proxy requirements
+      const proxyTest = await this.validateProxyRequirements(config);
+      
+      // Test CORS headers
+      const corsTest = await this.testCORSHeaders(config.api.baseUrl);
+
+      const allErrors = [
+        ...(urlTest?.errors || []),
+        ...(proxyTest?.errors || []),
+        ...(corsTest?.errors || [])
+      ].filter(Boolean);
+
+      const allWarnings = [
+        ...(urlTest?.warnings || []),
+        ...(proxyTest?.warnings || []),
+        ...(corsTest?.warnings || [])
+      ].filter(Boolean);
+
+      return {
+        valid: (urlTest?.valid ?? false) && (proxyTest?.valid ?? false) && (corsTest?.valid ?? false),
+        errors: allErrors,
+        warnings: allWarnings
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [`Browser compatibility validation failed: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: []
+      };
+    }
+  }
+
+  /**
+   * Test URL accessibility from browser perspective
+   */
+  private async testBrowserUrlAccess(url: string): Promise<BrowserValidationResult> {
+    // Simulate browser fetch behavior
+    // Check for CORS issues
+    // Validate response format
+    
+    if (url.startsWith('http') && !url.startsWith('/')) {
+      return {
+        valid: false,
+        errors: [`External URL detected: ${url}. This will cause CORS errors in browser.`],
+        warnings: [`Consider using proxy path instead: /api/toronto-open-data/...`]
+      };
     }
 
-    // Test data structure
-    const structureTest = await this.validateDataStructure(config);
-    tests.push(structureTest);
-    if (!structureTest.success) {
-      errors.push(structureTest.message || 'Data structure validation failed');
+    return { valid: true, errors: [], warnings: [] };
+  }
+
+  /**
+   * Validate CORS compliance
+   */
+  private async testCORSHeaders(url: string): Promise<BrowserValidationResult> {
+    try {
+      // If it's a proxy URL, it should be fine
+      if (url.startsWith('/api/')) {
+        return {
+          valid: true,
+          errors: [],
+          warnings: [],
+          details: { corsCompliant: true, reason: 'Using proxy path' }
+        };
+      }
+
+      // Test actual CORS headers for external URLs
+      const response = await fetch(url, { method: 'HEAD' });
+      const corsHeaders = {
+        'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+        'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+        'access-control-allow-headers': response.headers.get('access-control-allow-headers')
+      };
+
+      const hasCors = corsHeaders['access-control-allow-origin'] !== null;
+
+      return {
+        valid: hasCors,
+        errors: hasCors ? [] : ['No CORS headers detected. This will cause browser access issues.'],
+        warnings: hasCors ? [] : ['Configure proxy in vite.config.ts to resolve CORS issues'],
+        details: { corsHeaders, hasCors }
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [`CORS validation failed: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: ['Unable to test CORS headers. Ensure proxy is configured.']
+      };
+    }
+  }
+
+  /**
+   * Validate proxy requirements
+   */
+  private async validateProxyRequirements(config: any): Promise<BrowserValidationResult> {
+    const url = config.api.baseUrl;
+    
+    // Check if external URL requires proxy
+    if (url.startsWith('http')) {
+      const requiresProxy = this.urlRequiresProxy(url);
+      
+      if (requiresProxy) {
+        return {
+          valid: false,
+          errors: [`External URL requires proxy configuration: ${url}`],
+          warnings: [`Use proxy path like /api/toronto-open-data/ instead`]
+        };
+      }
     }
 
-    // Test transformation
-    const transformTest = await this.testTransformation(config);
-    tests.push(transformTest);
-    if (!transformTest.success) {
-      errors.push(transformTest.message || 'Data transformation failed');
+    return { valid: true, errors: [], warnings: [] };
+  }
+
+  /**
+   * Check if URL requires proxy based on domain
+   */
+  private urlRequiresProxy(url: string): boolean {
+    const corsRequiredDomains = [
+      'ckan0.cf.opendata.inter.prod-toronto.ca',
+      'opendata.toronto.ca',
+      'secure.toronto.ca'
+    ];
+
+    return corsRequiredDomains.some(domain => url.includes(domain));
+  }
+
+  /**
+   * Validate Node.js compatibility
+   */
+  private async validateNodeJsCompatibility(pluginId: string): Promise<BrowserValidationResult> {
+    try {
+      const config = await this.loadPluginConfig(pluginId);
+      let testUrl = config.api.baseUrl;
+      
+      // Convert proxy URL to actual URL for Node.js testing
+      if (testUrl.startsWith('/api/toronto-open-data/')) {
+        testUrl = testUrl.replace('/api/toronto-open-data/', 'https://ckan0.cf.opendata.inter.prod-toronto.ca/');
+      } else if (testUrl.startsWith('/api/toronto-secure/')) {
+        testUrl = testUrl.replace('/api/toronto-secure/', 'https://secure.toronto.ca/');
+      }
+      
+      // Test data fetching in Node.js context
+      const response = await fetch(testUrl);
+      
+      let data;
+      // Handle different API types
+      if (config.api.type === 'xml') {
+        // For XML APIs, just verify response is successful
+        const text = await response.text();
+        data = { xmlResponse: true, hasXmlContent: text.includes('<') };
+      } else {
+        // Handle JSON APIs
+        data = await response.json();
+      }
+      
+      return {
+        valid: true,
+        errors: [],
+        warnings: [],
+        details: { 
+          nodeCompatible: true, 
+          dataCount: Array.isArray(data) ? data.length : data.result?.records?.length || 0 
+        }
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [`Node.js compatibility test failed: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: []
+      };
     }
+  }
 
-    // Test map integration
-    const mapTest = await this.validateMapIntegration(config);
-    tests.push(mapTest);
-    if (!mapTest.success) {
-      warnings.push(mapTest.message || 'Map integration issues detected');
+  /**
+   * Validate proxy configuration
+   */
+  private async validateProxyConfiguration(pluginId: string): Promise<BrowserValidationResult> {
+    try {
+      const viteConfigPath = 'vite.config.ts';
+      
+      if (!await fs.pathExists(viteConfigPath)) {
+        return {
+          valid: false,
+          errors: ['vite.config.ts not found'],
+          warnings: []
+        };
+      }
+
+      const content = await fs.readFile(viteConfigPath, 'utf-8');
+      const hasProxy = content.includes('proxy:');
+      const hasTorontoProxy = content.includes('/api/toronto-open-data');
+
+      if (!hasProxy) {
+        return {
+          valid: false,
+          errors: ['No proxy configuration found in vite.config.ts'],
+          warnings: ['Add proxy configuration to handle CORS issues']
+        };
+      }
+
+      if (!hasTorontoProxy) {
+        return {
+          valid: false,
+          errors: ['Toronto Open Data proxy not configured'],
+          warnings: ['Add /api/toronto-open-data proxy to vite.config.ts']
+        };
+      }
+
+      return {
+        valid: true,
+        errors: [],
+        warnings: [],
+        details: { proxyConfigured: true }
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [`Proxy validation failed: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: []
+      };
     }
+  }
 
-    // Test popup rendering
-    const popupTest = await this.testPopupRendering(config);
-    tests.push(popupTest);
-    if (!popupTest.success) {
-      warnings.push(popupTest.message || 'Popup rendering issues detected');
-    }
-
-    // Performance tests
-    const performanceTest = await this.testPerformance(config);
-    tests.push(performanceTest);
-
-    // Toronto-specific validations
-    const torontoTests = await this.validateTorontoSpecific(config);
-    tests.push(...torontoTests);
-
-    // Generate suggestions
-    suggestions.push(...this.generateSuggestions(tests, config));
-
-    const performance = this.extractPerformanceMetrics(tests);
-    const valid = errors.length === 0;
+  /**
+   * Combine multiple validation results
+   */
+  private combineValidationResults(results: any[]): ValidationResult {
+    const allValid = results.every(r => {
+      if (r && typeof r.valid === 'boolean') return r.valid;
+      if (r && typeof r.success === 'boolean') return r.success;
+      return false;
+    });
+    
+    const allErrors = results.flatMap(r => r?.errors || []).filter(Boolean);
+    const allWarnings = results.flatMap(r => r?.warnings || []).filter(Boolean);
 
     return {
-      plugin: config.name,
-      valid,
-      tests,
-      errors,
-      warnings,
-      suggestions,
-      performance
+      valid: allValid,
+      errors: allErrors,
+      warnings: allWarnings,
+      details: { results }
     };
+  }
+
+  /**
+   * Load plugin configuration
+   */
+  private async loadPluginConfig(pluginId: string): Promise<any> {
+    const configPaths = [
+      `src/domains/transportation/${pluginId}/config.json`,
+      `src/domains/infrastructure/${pluginId}/config.json`,
+      `src/domains/environment/${pluginId}/config.json`,
+      `src/domains/events/${pluginId}/config.json`
+    ];
+
+    for (const configPath of configPaths) {
+      if (await fs.pathExists(configPath)) {
+        return await fs.readJSON(configPath);
+      }
+    }
+
+    throw new Error(`Plugin configuration not found for: ${pluginId}`);
+  }
+
+  /**
+   * Check plugin health
+   */
+  async checkPluginHealth(pluginId: string): Promise<PluginHealth> {
+    let config: any = null;
+    try {
+      const startTime = Date.now();
+      config = await this.loadPluginConfig(pluginId);
+      let testUrl = config.api.baseUrl;
+      
+      // Convert proxy URL to actual URL for Node.js testing
+      if (testUrl.startsWith('/api/toronto-open-data/')) {
+        testUrl = testUrl.replace('/api/toronto-open-data/', 'https://ckan0.cf.opendata.inter.prod-toronto.ca/');
+      } else if (testUrl.startsWith('/api/toronto-secure/')) {
+        testUrl = testUrl.replace('/api/toronto-secure/', 'https://secure.toronto.ca/');
+      }
+      
+      // Test data fetching
+      const response = await fetch(testUrl);
+      const fetchTime = Date.now() - startTime;
+      
+      let data;
+      let dataCount = 0;
+      
+      // Handle different API types
+      if (config.api.type === 'xml') {
+        // For XML APIs, we can't easily parse and count in CLI context
+        // Just verify the response is successful
+        const text = await response.text();
+        dataCount = text.includes('<') ? 1 : 0; // Basic XML detection
+        data = { xmlResponse: true };
+      } else {
+        // Handle JSON APIs
+        data = await response.json();
+        dataCount = Array.isArray(data) ? data.length : 
+                   data.result?.records?.length || 
+                   data.records?.length || 0;
+      }
+
+      return {
+        id: pluginId,
+        name: config.metadata?.name || pluginId,
+        status: 'healthy',
+        lastFetch: new Date(),
+        fetchTime,
+        dataCount,
+        issues: []
+      };
+    } catch (error) {
+      return {
+        id: pluginId,
+        name: config?.metadata?.name || pluginId,
+        status: 'error',
+        lastFetch: null,
+        fetchTime: 0,
+        dataCount: 0,
+        issues: [error instanceof Error ? error.message : String(error)]
+      };
+    }
+  }
+
+  async validateAll(options: ValidationOptions = {}): Promise<ValidationResult[]> {
+    const plugins = await this.discoverAllPlugins();
+    const results = await Promise.all(
+      plugins.map(plugin => this.validatePlugin(plugin.id, options))
+    );
+    
+    return results;
+  }
+
+  private async discoverAllPlugins(): Promise<{ id: string; path: string }[]> {
+    const plugins: { id: string; path: string }[] = [];
+    const domains = ['transportation', 'infrastructure', 'environment', 'events'];
+    
+    for (const domain of domains) {
+      const domainPath = `src/domains/${domain}`;
+      
+      if (await fs.pathExists(domainPath)) {
+        const entries = await fs.readdir(domainPath);
+        
+        for (const entry of entries) {
+          const pluginPath = path.join(domainPath, entry);
+          const configPath = path.join(pluginPath, 'config.json');
+          
+          if (await fs.pathExists(configPath)) {
+            plugins.push({ id: entry, path: pluginPath });
+          }
+        }
+      }
+    }
+    
+    return plugins;
   }
 
   private async testApiAccess(config: PluginConfig): Promise<TestResult> {
@@ -205,458 +578,68 @@ export class ValidationService {
     }
   }
 
-  private async testTransformation(config: PluginConfig): Promise<TestResult> {
-    try {
-      // This would test the actual transformer function
-      // For now, we'll simulate the test
-      const response = await fetch(config.apiUrl);
-      const data = await response.json();
-      
-      let records = data;
-      if (config.arrayProperty) {
-        records = data[config.arrayProperty];
-      }
-
-      // Test transformation logic
-      const sampleRecord = records[0];
-      const transformedFeature = this.simulateTransformation(sampleRecord);
-
-      if (!transformedFeature.geometry || !transformedFeature.properties) {
-        return {
-          step: 'Data Transformation',
-          success: false,
-          message: 'Transformation did not produce valid GeoJSON feature'
-        };
-      }
-
-      return {
-        step: 'Data Transformation',
-        success: true,
-        message: 'Transformation produces valid GeoJSON',
-        details: {
-          geometryType: transformedFeature.geometry.type,
-          propertyCount: Object.keys(transformedFeature.properties).length
-        }
-      };
-    } catch (error) {
-      return {
-        step: 'Data Transformation',
-        success: false,
-        message: `Transformation test failed: ${error instanceof Error ? error.message : String(error)}`
-      };
-    }
-  }
-
-  private async validateMapIntegration(config: PluginConfig): Promise<TestResult> {
-    try {
-      // Check if plugin is properly integrated into the map system
-      // This would check actual file integrations
-      
-      const checks = [
-        this.checkPluginLoader(config),
-        this.checkLayerConfiguration(config),
-        this.checkDataHook(config),
-        this.checkMapContainer(config)
-      ];
-
-      const results = await Promise.all(checks);
-      const failures = results.filter(r => !r.success);
-
-      if (failures.length > 0) {
-        return {
-          step: 'Map Integration',
-          success: false,
-          message: `Integration issues: ${failures.map(f => f.issue).join(', ')}`,
-          details: { failures }
-        };
-      }
-
-      return {
-        step: 'Map Integration',
-        success: true,
-        message: 'All integration points validated'
-      };
-    } catch (error) {
-      return {
-        step: 'Map Integration',
-        success: false,
-        message: `Integration validation failed: ${error instanceof Error ? error.message : String(error)}`
-      };
-    }
-  }
-
-  private async testPopupRendering(config: PluginConfig): Promise<TestResult> {
-    try {
-      // Test popup template rendering
-      const response = await fetch(config.apiUrl);
-      const data = await response.json();
-      
-      let records = data;
-      if (config.arrayProperty) {
-        records = data[config.arrayProperty];
-      }
-
-      const sampleRecord = records[0];
-      
-      // Check if all referenced fields exist
-      const missingFields = this.checkPopupFields(sampleRecord);
-      
-      if (missingFields.length > 0) {
-        return {
-          step: 'Popup Rendering',
-          success: false,
-          message: `Missing fields in popup template: ${missingFields.join(', ')}`
-        };
-      }
-
-      return {
-        step: 'Popup Rendering',
-        success: true,
-        message: 'Popup template fields validated'
-      };
-    } catch (error) {
-      return {
-        step: 'Popup Rendering',
-        success: false,
-        message: `Popup validation failed: ${error instanceof Error ? error.message : String(error)}`
-      };
-    }
-  }
-
-  private async testPerformance(config: PluginConfig): Promise<TestResult> {
-    const startTime = Date.now();
-    
-    try {
-      const response = await fetch(config.apiUrl);
-      const apiTime = Date.now() - startTime;
-      
-      const transformStart = Date.now();
-      const data = await response.json();
-      let records = data;
-      if (config.arrayProperty) {
-        records = data[config.arrayProperty];
-      }
-
-      // Simulate transformation of all records
-      records.forEach((record: any) => this.simulateTransformation(record));
-      const transformTime = Date.now() - transformStart;
-
-      const dataSize = JSON.stringify(data).length;
-      const totalTime = Date.now() - startTime;
-
-      // Performance thresholds
-      const isSlowApi = apiTime > 5000; // 5 seconds
-      const isLargeDataset = dataSize > 1024 * 1024; // 1MB
-      const isSlowTransform = transformTime > 1000; // 1 second
-
-      const warnings = [];
-      if (isSlowApi) warnings.push('Slow API response');
-      if (isLargeDataset) warnings.push('Large dataset size');
-      if (isSlowTransform) warnings.push('Slow transformation');
-
-      return {
-        step: 'Performance',
-        success: warnings.length === 0,
-        message: warnings.length > 0 ? `Performance issues: ${warnings.join(', ')}` : 'Performance acceptable',
-        duration: totalTime,
-        details: {
-          apiResponseTime: apiTime,
-          transformationTime: transformTime,
-          dataSize,
-          recordCount: records.length
-        }
-      };
-    } catch (error) {
-      return {
-        step: 'Performance',
-        success: false,
-        message: `Performance test failed: ${error instanceof Error ? error.message : String(error)}`,
-        duration: Date.now() - startTime
-      };
-    }
-  }
-
-  private async validateTorontoSpecific(config: PluginConfig): Promise<TestResult[]> {
-    const tests: TestResult[] = [];
-
-    try {
-      const response = await fetch(config.apiUrl);
-      const data = await response.json();
-      
-      let records = data;
-      if (config.arrayProperty) {
-        records = data[config.arrayProperty];
-      }
-
-      // Test Toronto coordinate bounds
-      const boundsTest = this.testTorontoBounds(records);
-      tests.push(boundsTest);
-
-      // Test Toronto-specific data patterns
-      const patternsTest = this.testTorontoPatterns(records, config);
-      tests.push(patternsTest);
-
-      // Test data quality for Toronto datasets
-      const qualityTest = this.testTorontoDataQuality(records, config);
-      tests.push(qualityTest);
-
-    } catch (error) {
-      tests.push({
-        step: 'Toronto Validation',
-        success: false,
-        message: `Toronto-specific validation failed: ${error instanceof Error ? error.message : String(error)}`
-      });
-    }
-
-    return tests;
-  }
-
-  private testTorontoBounds(records: any[]): TestResult {
-    const coordinateFields = this.findCoordinateFields(records[0]);
-    
-    if (coordinateFields.length === 0) {
-      return {
-        step: 'Toronto Bounds',
-        success: true,
-        message: 'No coordinate fields to validate'
-      };
-    }
-
-    const outOfBounds = records.filter(record => {
-      const lat = record[coordinateFields[0]];
-      const lng = record[coordinateFields[1]];
-      
-      return lat < 43.5 || lat > 43.9 || lng < -79.8 || lng > -79.1;
-    });
-
-    const success = outOfBounds.length === 0;
-    
-    return {
-      step: 'Toronto Bounds',
-      success,
-      message: success ? 
-        'All coordinates within Toronto bounds' : 
-        `${outOfBounds.length} records outside Toronto bounds`,
-      details: {
-        totalRecords: records.length,
-        outOfBounds: outOfBounds.length,
-        coordinateFields
-      }
-    };
-  }
-
-  private testTorontoPatterns(records: any[], config: PluginConfig): TestResult {
-    // This would use the TorontoDataService to validate patterns
-    const sampleMetadata = {
-      name: config.name,
-      description: config.description,
-      valueFields: Object.keys(records[0]).map(key => ({
-        name: key,
-        type: typeof records[0][key] as any,
-        semanticType: 'generic',
-        format: 'unknown',
-        nullable: false
-      }))
-    } as any;
-
-    const patterns = this.torontoService.recognizeTorontoPatterns(sampleMetadata);
-    const detectedPatterns = Object.values(patterns).filter(p => p !== null);
-
-    return {
-      step: 'Toronto Patterns',
-      success: true,
-      message: detectedPatterns.length > 0 ? 
-        `Detected ${detectedPatterns.length} Toronto-specific patterns` :
-        'No specific Toronto patterns detected',
-      details: {
-        patterns: Object.keys(patterns).filter(key => patterns[key] !== null)
-      }
-    };
-  }
-
-  private testTorontoDataQuality(records: any[], config: PluginConfig): TestResult {
-    const issues = [];
-    
-    // Check for common data quality issues
-    const nullCounts = this.checkNullValues(records);
-    const duplicates = this.checkDuplicates(records);
-    const outliers = this.checkOutliers(records);
-
-    if (nullCounts.high.length > 0) {
-      issues.push(`High null rates in: ${nullCounts.high.join(', ')}`);
-    }
-
-    if (duplicates > 0) {
-      issues.push(`${duplicates} duplicate records found`);
-    }
-
-    if (outliers.length > 0) {
-      issues.push(`Outliers detected in: ${outliers.join(', ')}`);
-    }
-
-    return {
-      step: 'Data Quality',
-      success: issues.length === 0,
-      message: issues.length > 0 ? 
-        `Data quality issues: ${issues.join('; ')}` :
-        'Data quality acceptable',
-      details: {
-        nullCounts,
-        duplicates,
-        outliers
-      }
-    };
-  }
-
-  // Helper methods
   private hasCoordinateFields(fields: string[]): boolean {
-    const latFields = fields.filter(f => /lat|latitude|y/i.test(f));
-    const lngFields = fields.filter(f => /lng|lon|longitude|x/i.test(f));
-    return latFields.length > 0 && lngFields.length > 0;
-  }
-
-  private hasLocationFields(fields: string[]): boolean {
-    return fields.some(f => /location|place|address|name|site/i.test(f));
-  }
-
-  private findCoordinateFields(record: any): string[] {
-    return Object.keys(record).filter(key => 
-      /lat|lng|longitude|latitude|x|y/i.test(key) && 
-      typeof record[key] === 'number'
+    const coordinatePatterns = [
+      /lat/i, /lng/i, /lon/i, /latitude/i, /longitude/i,
+      /coord/i, /x_coord/i, /y_coord/i, /geometry/i
+    ];
+    
+    return coordinatePatterns.some(pattern => 
+      fields.some(field => pattern.test(field))
     );
   }
 
-  private simulateTransformation(record: any): any {
-    // Simulate GeoJSON transformation
-    const coords = this.findCoordinateFields(record);
+  private hasLocationFields(fields: string[]): boolean {
+    const locationPatterns = [
+      /address/i, /location/i, /street/i, /intersection/i,
+      /ward/i, /district/i, /neighbourhood/i, /postal/i
+    ];
     
-    return {
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: coords.length >= 2 ? [record[coords[1]], record[coords[0]]] : [0, 0]
-      },
-      properties: record
-    };
+    return locationPatterns.some(pattern => 
+      fields.some(field => pattern.test(field))
+    );
   }
 
-  private checkPluginLoader(config: PluginConfig): Promise<{ success: boolean; issue?: string }> {
-    // This would check if the plugin is in the loader
-    return Promise.resolve({ success: true });
+  private async validatePluginStructure(pluginId: string): Promise<TestResult> {
+    try {
+      const config = await this.loadPluginConfig(pluginId);
+      const errors: string[] = [];
+
+      // Validate required sections
+      if (!config.metadata) errors.push('Missing metadata section');
+      if (!config.api) errors.push('Missing api section');
+      if (!config.transform) errors.push('Missing transform section');
+
+      // Validate metadata
+      if (config.metadata) {
+        if (!config.metadata.id) errors.push('Missing metadata.id');
+        if (!config.metadata.name) errors.push('Missing metadata.name');
+        if (!config.metadata.domain) errors.push('Missing metadata.domain');
+      }
+
+      // Validate API configuration
+      if (config.api) {
+        if (!config.api.baseUrl) errors.push('Missing api.baseUrl');
+        if (!config.api.type) errors.push('Missing api.type');
+      }
+
+      return {
+        step: 'Plugin Structure',
+        success: errors.length === 0,
+        message: errors.length === 0 ? 'Plugin structure is valid' : `Structure errors: ${errors.join(', ')}`,
+        details: { errors }
+      };
+    } catch (error) {
+      return {
+        step: 'Plugin Structure',
+        success: false,
+        message: `Structure validation failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
   }
 
   private checkLayerConfiguration(config: PluginConfig): Promise<{ success: boolean; issue?: string }> {
     // This would check layer config files
     return Promise.resolve({ success: true });
-  }
-
-  private checkDataHook(config: PluginConfig): Promise<{ success: boolean; issue?: string }> {
-    // This would check data hook integration
-    return Promise.resolve({ success: true });
-  }
-
-  private checkMapContainer(config: PluginConfig): Promise<{ success: boolean; issue?: string }> {
-    // This would check map container integration
-    return Promise.resolve({ success: true });
-  }
-
-  private checkPopupFields(record: any): string[] {
-    // This would check popup template fields against record
-    return [];
-  }
-
-  private checkNullValues(records: any[]): { high: string[]; medium: string[]; low: string[] } {
-    const fields = Object.keys(records[0]);
-    const nullRates = fields.map(field => {
-      const nullCount = records.filter(r => r[field] == null).length;
-      const rate = nullCount / records.length;
-      return { field, rate };
-    });
-
-    return {
-      high: nullRates.filter(nr => nr.rate > 0.5).map(nr => nr.field),
-      medium: nullRates.filter(nr => nr.rate > 0.2 && nr.rate <= 0.5).map(nr => nr.field),
-      low: nullRates.filter(nr => nr.rate > 0 && nr.rate <= 0.2).map(nr => nr.field)
-    };
-  }
-
-  private checkDuplicates(records: any[]): number {
-    const seen = new Set();
-    let duplicates = 0;
-    
-    records.forEach(record => {
-      const key = JSON.stringify(record);
-      if (seen.has(key)) {
-        duplicates++;
-      } else {
-        seen.add(key);
-      }
-    });
-
-    return duplicates;
-  }
-
-  private checkOutliers(records: any[]): string[] {
-    const numericFields = Object.keys(records[0]).filter(key => 
-      typeof records[0][key] === 'number'
-    );
-
-    const outlierFields = [];
-
-    for (const field of numericFields) {
-      const values = records.map(r => r[field]).filter(v => v != null);
-      if (values.length === 0) continue;
-
-      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
-      const stdDev = Math.sqrt(
-        values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length
-      );
-
-      const outliers = values.filter(v => Math.abs(v - mean) > 3 * stdDev);
-      if (outliers.length > 0) {
-        outlierFields.push(field);
-      }
-    }
-
-    return outlierFields;
-  }
-
-  private generateSuggestions(tests: TestResult[], config: PluginConfig): string[] {
-    const suggestions = [];
-
-    // Performance suggestions
-    const perfTest = tests.find(t => t.step === 'Performance');
-    if (perfTest && !perfTest.success) {
-      if (perfTest.details?.apiResponseTime > 5000) {
-        suggestions.push('Consider implementing data caching for slow API responses');
-      }
-      if (perfTest.details?.dataSize > 1024 * 1024) {
-        suggestions.push('Consider implementing data pagination or filtering for large datasets');
-      }
-    }
-
-    // Data quality suggestions
-    const qualityTest = tests.find(t => t.step === 'Data Quality');
-    if (qualityTest && !qualityTest.success) {
-      suggestions.push('Implement data cleaning and validation in the transformer');
-    }
-
-    // Toronto-specific suggestions
-    const boundsTest = tests.find(t => t.step === 'Toronto Bounds');
-    if (boundsTest && !boundsTest.success) {
-      suggestions.push('Add coordinate validation to filter out-of-bounds data');
-    }
-
-    return suggestions;
-  }
-
-  private extractPerformanceMetrics(tests: TestResult[]): { apiResponseTime: number; dataSize: number; transformationTime: number } {
-    const perfTest = tests.find(t => t.step === 'Performance');
-    
-    return {
-      apiResponseTime: perfTest?.details?.apiResponseTime || 0,
-      dataSize: perfTest?.details?.dataSize || 0,
-      transformationTime: perfTest?.details?.transformationTime || 0
-    };
   }
 } 

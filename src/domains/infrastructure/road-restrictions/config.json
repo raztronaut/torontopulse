@@ -17,13 +17,15 @@
   },
   "api": {
     "type": "json",
-    "baseUrl": "https://secure.toronto.ca/opendata/cart/road_restrictions/v3?format=json",
+    "baseUrl": "/api/toronto-secure/opendata/cart/road_restrictions/v3?format=json",
     "authentication": null,
     "rateLimit": {
       "requests": 60,
       "window": 60000
     },
-    "timeout": 10000
+    "timeout": 10000,
+    "requiresProxy": true,
+    "originalUrl": "https://secure.toronto.ca/opendata/cart/road_restrictions/v3?format=json"
   },
   "transform": {
     "strategy": "json-to-geojson",

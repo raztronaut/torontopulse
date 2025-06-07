@@ -16,6 +16,15 @@ export default defineConfig({
         headers: {
           'User-Agent': 'TorontoPulse/1.0'
         }
+      },
+      '/api/toronto-secure': {
+        target: 'https://secure.toronto.ca',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/toronto-secure/, ''),
+        secure: true,
+        headers: {
+          'User-Agent': 'TorontoPulse/1.0'
+        }
       }
     }
   },

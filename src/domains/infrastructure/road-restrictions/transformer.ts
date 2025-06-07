@@ -11,10 +11,16 @@ export class RoadRestrictionsTransformer implements DataTransformer {
       // Handle the API response structure - extract the array from the root object
       let items = data;
       
-      // The API returns an object with a "Closure" property containing the array
-      if (typeof data === 'object' && !Array.isArray(data)) {
+      // If data is already an array, use it directly
+      if (Array.isArray(data)) {
+        items = data;
+      } else if (typeof data === 'object' && !Array.isArray(data)) {
+        // The API returns an object with a "Closure" property containing the array
         if (data.Closure && Array.isArray(data.Closure)) {
           items = data.Closure;
+        } else if (data.result && data.result.records && Array.isArray(data.result.records)) {
+          // Handle CKAN API format
+          items = data.result.records;
         } else {
           // Check for any array property as fallback
           const keys = Object.keys(data);

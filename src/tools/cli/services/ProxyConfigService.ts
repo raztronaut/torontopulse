@@ -7,13 +7,153 @@ export interface ProxyConfig {
     changeOrigin: boolean;
     secure: boolean;
     rewrite?: (path: string) => string;
+    headers?: Record<string, string>;
   };
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface DataSourceConfig {
+  api: {
+    baseUrl: string;
+    requiresProxy?: boolean;
+    originalUrl?: string;
+  };
+  [key: string]: any;
 }
 
 export class ProxyConfigService {
   private readonly viteConfigPath = 'vite.config.ts';
+  private readonly TORONTO_OPEN_DATA_DOMAINS = [
+    'ckan0.cf.opendata.inter.prod-toronto.ca',
+    'opendata.toronto.ca',
+    'open.toronto.ca',
+    'secure.toronto.ca'
+  ];
 
-  async configureProxy(domain: string): Promise<void> {
+  /**
+   * Automatically configure proxy URLs for Toronto Open Data sources
+   */
+  configureProxy(config: DataSourceConfig): DataSourceConfig {
+    const originalUrl = config.api.baseUrl;
+    
+    // Skip if already using proxy path
+    if (originalUrl.startsWith('/api/')) {
+      return config;
+    }
+    
+    // Detect Toronto Open Data URLs
+    for (const domain of this.TORONTO_OPEN_DATA_DOMAINS) {
+      if (originalUrl.includes(domain)) {
+        config.api.baseUrl = this.transformToProxyUrl(originalUrl, domain);
+        config.api.requiresProxy = true;
+        config.api.originalUrl = originalUrl;
+        
+        console.log(`🔧 Configured proxy for ${domain}`);
+        console.log(`   Original: ${originalUrl}`);
+        console.log(`   Proxy: ${config.api.baseUrl}`);
+        break;
+      }
+    }
+    
+    return config;
+  }
+
+  /**
+   * Transform external URL to proxy path
+   */
+  private transformToProxyUrl(url: string, domain: string): string {
+    if (domain.includes('ckan0.cf.opendata.inter.prod-toronto.ca')) {
+      return url.replace('https://ckan0.cf.opendata.inter.prod-toronto.ca', '/api/toronto-open-data');
+    }
+    
+    if (domain.includes('secure.toronto.ca')) {
+      return url.replace('https://secure.toronto.ca', '/api/toronto');
+    }
+    
+    if (domain.includes('opendata.toronto.ca')) {
+      return url.replace('https://opendata.toronto.ca', '/api/opendata');
+    }
+    
+    return url.replace(`https://${domain}`, '/api/toronto-open-data');
+  }
+
+  /**
+   * Validate proxy configuration exists in vite.config.ts
+   */
+  async validateProxyConfiguration(): Promise<ValidationResult> {
+    try {
+      const viteConfig = await this.readViteConfig();
+      const hasTorontoProxy = viteConfig.includes('/api/toronto-open-data');
+      
+      return {
+        valid: hasTorontoProxy,
+        errors: hasTorontoProxy ? [] : ['Toronto Open Data proxy not configured in vite.config.ts'],
+        warnings: []
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [`Failed to validate proxy configuration: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: []
+      };
+    }
+  }
+
+  /**
+   * Auto-configure vite.config.ts proxy if missing
+   */
+  async ensureProxyConfiguration(): Promise<void> {
+    const validation = await this.validateProxyConfiguration();
+    
+    if (!validation.valid) {
+      await this.addTorontoOpenDataProxy();
+      console.log('✅ Added Toronto Open Data proxy to vite.config.ts');
+    }
+  }
+
+  /**
+   * Read vite.config.ts content
+   */
+  private async readViteConfig(): Promise<string> {
+    if (!await fs.pathExists(this.viteConfigPath)) {
+      throw new Error('vite.config.ts not found');
+    }
+    return await fs.readFile(this.viteConfigPath, 'utf-8');
+  }
+
+  /**
+   * Add Toronto Open Data proxy to vite.config.ts if missing
+   */
+  private async addTorontoOpenDataProxy(): Promise<void> {
+    const content = await this.readViteConfig();
+    
+    // Check if proxy already exists
+    if (content.includes('/api/toronto-open-data')) {
+      return; // Already configured
+    }
+
+    const proxyConfig = {
+      '/api/toronto-open-data': {
+        target: 'https://ckan0.cf.opendata.inter.prod-toronto.ca',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/api\/toronto-open-data/, ''),
+        secure: true,
+        headers: {
+          'User-Agent': 'TorontoPulse/1.0'
+        }
+      }
+    };
+
+    const updatedContent = this.mergeProxyConfig(content, proxyConfig);
+    await fs.writeFile(this.viteConfigPath, updatedContent);
+  }
+
+  async configureProxyForDomain(domain: string): Promise<void> {
     const proxyConfig = this.generateProxyConfig(domain);
     await this.updateViteConfig(proxyConfig);
   }
@@ -22,7 +162,7 @@ export class ProxyConfigService {
     try {
       const urlObj = new URL(url);
       const domain = urlObj.hostname;
-      await this.configureProxy(domain);
+      await this.configureProxyForDomain(domain);
     } catch (error) {
       throw new Error(`Invalid URL provided: ${url}`);
     }
@@ -33,11 +173,14 @@ export class ProxyConfigService {
 
     // Toronto Open Data specific configurations
     if (domain.includes('ckan0.cf.opendata.inter.prod-toronto.ca')) {
-      config['/api/ckan'] = {
+      config['/api/toronto-open-data'] = {
         target: 'https://ckan0.cf.opendata.inter.prod-toronto.ca',
         changeOrigin: true,
         secure: true,
-        rewrite: (path) => path.replace(/^\/api\/ckan/, '/api/3/action')
+        rewrite: (path) => path.replace(/^\/api\/toronto-open-data/, ''),
+        headers: {
+          'User-Agent': 'TorontoPulse/1.0'
+        }
       };
     }
 
@@ -163,8 +306,8 @@ export class ProxyConfigService {
       // Map domains to proxy paths
       if (domain.includes('ckan0.cf.opendata.inter.prod-toronto.ca')) {
         return originalUrl.replace(
-          'https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action',
-          '/api/ckan'
+          'https://ckan0.cf.opendata.inter.prod-toronto.ca',
+          '/api/toronto-open-data'
         );
       }
 

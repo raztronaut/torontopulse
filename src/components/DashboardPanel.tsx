@@ -101,93 +101,101 @@ export function DashboardPanel({
 
         {/* Expandable Content */}
         {isExpanded && (
-          <div className="space-y-4">
-            {/* Mode Selection */}
-            <div>
-              <h4 className="text-sm font-medium text-gray-300 mb-2">Quick Modes</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {DASHBOARD_MODES.map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => onModeChange(mode)}
-                    className={`p-2 rounded-md text-left transition-colors ${
-                      currentMode === mode.id
-                        ? 'bg-gray-700/70 border border-gray-500 text-white'
-                        : 'bg-gray-800/50 hover:bg-gray-700/50 border border-gray-600/50 text-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className={`${currentMode === mode.id ? 'text-gray-300' : 'text-gray-400'}`}>
-                        {getIcon(mode.icon)}
-                      </div>
-                      <span className="text-sm font-medium">{mode.name}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Layer Controls */}
-            <div>
-              <h4 className="text-sm font-medium text-gray-300 mb-2">Data Layers</h4>
-              <div className="space-y-2">
-                {layers.map((layer) => (
-                  <div
-                    key={layer.id}
-                    className={`layer-toggle ${layer.enabled ? 'active' : ''}`}
-                    onClick={() => onLayerToggle(layer.id)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="text-gray-400">
-                        {getIcon(layer.icon)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-white">
-                          {layer.name}
+          <div 
+            className="overflow-y-auto max-h-[calc(100vh-12rem)] pr-1 custom-scrollbar"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(75, 85, 99, 0.6) rgba(17, 24, 39, 0.3)',
+            }}
+          >
+            <div className="space-y-4 pr-1">
+              {/* Mode Selection */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-300 mb-2">Quick Modes</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {DASHBOARD_MODES.map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => onModeChange(mode)}
+                      className={`p-2 rounded-md text-left transition-colors ${
+                        currentMode === mode.id
+                          ? 'bg-gray-700/70 border border-gray-500 text-white'
+                          : 'bg-gray-800/50 hover:bg-gray-700/50 border border-gray-600/50 text-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className={`${currentMode === mode.id ? 'text-gray-300' : 'text-gray-400'}`}>
+                          {getIcon(mode.icon)}
                         </div>
-                        <div className="text-xs text-gray-400">
-                          {layer.description}
-                        </div>
+                        <span className="text-sm font-medium">{mode.name}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: layer.color }}
-                      ></div>
-                      <div className="relative">
-                        <div
-                          className={`w-11 h-6 rounded-full transition-colors duration-200 ${
-                            layer.enabled ? 'bg-blue-600' : 'bg-gray-600'
-                          }`}
-                        >
-                          <div
-                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                              layer.enabled ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Data Stats */}
-            <div className="pt-3 border-t border-gray-600">
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-lg font-bold text-white">
-                    {layers.filter(l => l.enabled).length}
-                  </div>
-                  <div className="text-xs text-gray-400">Active Layers</div>
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <div className="text-lg font-bold text-white">
-                    {Math.floor(Math.random() * 1000) + 500}
+              </div>
+
+              {/* Layer Controls */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-300 mb-2">Data Layers</h4>
+                <div className="space-y-2">
+                  {layers.map((layer) => (
+                    <div
+                      key={layer.id}
+                      className={`layer-toggle ${layer.enabled ? 'active' : ''}`}
+                      onClick={() => onLayerToggle(layer.id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="text-gray-400">
+                          {getIcon(layer.icon)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-white">
+                            {layer.name}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {layer.description}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: layer.color }}
+                        ></div>
+                        <div className="relative">
+                          <div
+                            className={`w-11 h-6 rounded-full transition-colors duration-200 ${
+                              layer.enabled ? 'bg-blue-600' : 'bg-gray-600'
+                            }`}
+                          >
+                            <div
+                              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                                layer.enabled ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Data Stats */}
+              <div className="pt-3 border-t border-gray-600">
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <div className="text-lg font-bold text-white">
+                      {layers.filter(l => l.enabled).length}
+                    </div>
+                    <div className="text-xs text-gray-400">Active Layers</div>
                   </div>
-                  <div className="text-xs text-gray-400">Data Points</div>
+                  <div>
+                    <div className="text-lg font-bold text-white">
+                      {Math.floor(Math.random() * 1000) + 500}
+                    </div>
+                    <div className="text-xs text-gray-400">Data Points</div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -7,6 +7,8 @@ import { validateAll } from './commands/validate.js';
 import { discoverDatasets } from './commands/discover.js';
 import { verifyIntegration } from './commands/verify.js';
 import { previewDataset } from './commands/preview.js';
+import { fixCORS, fixProxy, validateBrowser } from './commands/fix.js';
+import { healthCheck, detectIssues } from './commands/health.js';
 
 const program = new Command();
 
@@ -72,5 +74,62 @@ program
   .option('-f, --format <format>', 'Output format (table, json, summary)', 'table')
   .option('-s, --sample <number>', 'Number of sample records to analyze', '10')
   .action(previewDataset);
+
+// New CORS and Proxy Fix Commands
+program
+  .command('fix:cors')
+  .description('Auto-fix CORS issues in plugins')
+  .option('-p, --plugin <plugin>', 'Fix specific plugin')
+  .option('-a, --all', 'Fix all plugins')
+  .option('-v, --verbose', 'Show detailed output')
+  .action(fixCORS);
+
+program
+  .command('fix:proxy')
+  .description('Auto-fix proxy configuration issues')
+  .option('-v, --verbose', 'Show detailed output')
+  .action(fixProxy);
+
+// New Browser Validation Commands
+program
+  .command('validate:browser')
+  .description('Validate plugin browser compatibility and data loading')
+  .option('-p, --plugin <plugin>', 'Validate specific plugin')
+  .option('-a, --all', 'Validate all plugins')
+  .option('-f, --fix', 'Auto-fix detected issues')
+  .option('-v, --verbose', 'Show detailed output')
+  .action(validateBrowser);
+
+// New Health Monitoring Commands
+program
+  .command('health')
+  .description('Check integration health and monitor plugin status')
+  .option('-p, --plugin <plugin>', 'Check specific plugin health')
+  .option('-w, --watch', 'Watch mode - continuously monitor health')
+  .option('-i, --interval <seconds>', 'Watch interval in seconds', '30')
+  .option('-v, --verbose', 'Show detailed health information')
+  .action((options) => {
+    const healthOptions = {
+      ...options,
+      interval: options.interval ? parseInt(options.interval) * 1000 : undefined
+    };
+    healthCheck(healthOptions);
+  });
+
+program
+  .command('detect:issues')
+  .description('Detect and suggest fixes for common integration issues')
+  .action(detectIssues);
+
+// Aliases for common commands
+program
+  .command('fix')
+  .description('Auto-fix common issues (alias for fix:cors --all)')
+  .action(() => fixCORS({ all: true }));
+
+program
+  .command('status')
+  .description('Show integration status (alias for health)')
+  .action(() => healthCheck({}));
 
 program.parse(); 
