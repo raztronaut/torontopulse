@@ -19,7 +19,7 @@
   },
   "api": {
     "type": "json",
-    "baseUrl": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/toronto-beaches-observations/resource/5731ce39-f871-41e3-a5cf-4742e02fded8/download/toronto-beaches-observations.json",
+    "baseUrl": "/api/toronto-open-data/dataset/toronto-beaches-observations/resource/5731ce39-f871-41e3-a5cf-4742e02fded8/download/toronto-beaches-observations.json",
     "headers": {
       "Accept": "application/json",
       "User-Agent": "TorontoPulse/1.0"

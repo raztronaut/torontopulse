@@ -15,8 +15,15 @@ export class TorontoBeachesObservationsFetcher implements DataFetcher {
     console.log('🏖️ Beach observations fetcher called with URL:', this.baseUrl);
     
     try {
-      // Add query parameters to potentially get more recent data
-      const url = new URL(this.baseUrl);
+      // Handle both absolute and relative URLs
+      let url: URL;
+      if (this.baseUrl.startsWith('http')) {
+        // Absolute URL
+        url = new URL(this.baseUrl);
+      } else {
+        // Relative URL - use current origin
+        url = new URL(this.baseUrl, window.location.origin);
+      }
       
       // Add parameters that might help get recent data
       url.searchParams.set('limit', '1000'); // Get more records to ensure we have recent data

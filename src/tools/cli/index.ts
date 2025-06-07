@@ -1,21 +1,33 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { generateDataSource } from './commands/generate.js';
+import { generateDataSourceEnhanced } from './commands/generate-enhanced.js';
 import { testDataSource } from './commands/test.js';
 import { validateAll } from './commands/validate.js';
 import { discoverDatasets } from './commands/discover.js';
 import { verifyIntegration } from './commands/verify.js';
+import { previewDataset } from './commands/preview.js';
 
 const program = new Command();
 
 program
   .name('toronto-pulse')
   .description('Toronto Pulse development tools')
-  .version('1.0.0');
+  .version('2.0.0');
 
 program
   .command('generate:datasource')
-  .description('Generate a new data source plugin')
+  .description('Generate a new data source plugin (enhanced with auto-discovery)')
+  .option('-u, --url <url>', 'Toronto Open Data URL for automatic discovery')
+  .option('--auto-integrate', 'Automatically integrate with application (no prompts)')
+  .option('-n, --name <name>', 'Override plugin name')
+  .option('-d, --domain <domain>', 'Override domain (transportation, infrastructure, environment, events)')
+  .option('-l, --layer-id <id>', 'Custom layer identifier')
+  .action(generateDataSourceEnhanced);
+
+program
+  .command('generate:datasource:legacy')
+  .description('Generate a new data source plugin (legacy interactive mode)')
   .option('-n, --name <name>', 'Data source name')
   .option('-d, --domain <domain>', 'Data source domain')
   .option('-u, --url <url>', 'API URL')
@@ -51,5 +63,14 @@ program
   .option('-a, --all', 'Verify all integrations')
   .option('-f, --fix', 'Auto-fix issues where possible')
   .action(verifyIntegration);
+
+program
+  .command('preview:dataset')
+  .description('Preview a Toronto Open Data dataset before integration')
+  .option('-u, --url <url>', 'Toronto Open Data URL to preview')
+  .option('--no-interactive', 'Disable interactive mode')
+  .option('-f, --format <format>', 'Output format (table, json, summary)', 'table')
+  .option('-s, --sample <number>', 'Number of sample records to analyze', '10')
+  .action(previewDataset);
 
 program.parse(); 
