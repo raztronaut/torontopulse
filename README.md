@@ -115,71 +115,42 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 - Refresh data manually using the refresh button
 - Expand/collapse the control panel for better map viewing
 
-## 🆕 CLI Tools & Plugin Development (Phase 5 - Complete)
+## 🆕 CLI Tools & Plugin Development
 
-Toronto Pulse now includes a comprehensive CLI toolkit with complete CORS resolution, XML API support, and real-time health monitoring:
+Toronto Pulse features a powerful CLI toolkit for rapid data source development with **automatic CORS resolution** and **one-command integration**:
 
-### Essential Commands (NEW & ENHANCED)
+### Quick Start
 ```bash
-# Health monitoring (NEW)
-npm run tp health                              # Check all plugin health
-npm run tp -- health --watch                  # Continuous monitoring
-
-# CORS auto-fix (NEW)
-npm run tp -- fix:cors --all                 # Fix all CORS issues
-
-# Browser validation (NEW)
-npm run tp -- validate:browser --all --fix   # Validate and auto-fix
-
-# Enhanced generation with CORS prevention
-npm run tp generate:datasource               # One-command integration
-
-# Enhanced testing with XML support
-npm run tp test:datasource ttc-vehicles --validate
-
-# Enhanced integration verification
-npm run tp verify:integration --all --fix
-```
-
-### Complete Workflow (Phase 5)
-```bash
-# 1. Generate new plugin (automatic CORS prevention)
+# Generate a new data source plugin (automatic CORS prevention)
 npm run tp generate:datasource
 
-# 2. Check health (should be immediately healthy)
+# Check health of all plugins
 npm run tp health
 
-# 3. Verify integration (comprehensive validation)
-npm run tp verify:integration --all
-
-# Result: True "one-command, zero-issues" integration! 🎉
+# Test a specific plugin
+npm run tp test:datasource ttc-vehicles --validate
 ```
 
-### 🎉 Phase 5 Achievements
+### Auto-Generation Features
+- **One-Command Integration**: Complete plugin generation from URL to working browser layer
+- **Automatic CORS Prevention**: No manual proxy configuration needed
+- **XML & JSON API Support**: Handles TTC Live Vehicles XML and Toronto Open Data JSON APIs
+- **Real-Time Health Monitoring**: Live dashboard showing plugin status and performance
+- **Type Safety**: Full TypeScript coverage with automatic type generation
 
-#### ✅ **Complete CORS Resolution**
-- 100% elimination of manual CORS fixes
-- Automatic proxy configuration for all Toronto data sources
-- Browser compatibility guaranteed from CLI generation
+### Plugin Generation Example
+```bash
+npm run tp generate:datasource \
+  --name="Traffic Signals" \
+  --domain="infrastructure" \
+  --url="https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/datastore_search"
 
-#### ✅ **Real-Time Health Monitoring**
-- Live dashboard showing all plugin status (5/5 healthy)
-- Performance metrics and issue detection
-- Automated fix suggestions with one-command resolution
+# Result: Complete, working plugin with zero manual fixes required! 🎉
+```
 
-#### ✅ **XML API Support**
-- Proper handling of TTC Live Vehicles XML format
-- Enhanced validation for different API types
-- Accurate health reporting for all data formats
+**Current Status**: 5/5 plugins healthy with automatic CORS resolution
 
-#### ✅ **True One-Command Integration**
-- Single command from discovery to deployment
-- Immediate feedback on plugin health and performance
-- Automated issue resolution with clear guidance
-
-**Status**: 🎯 **Mission Accomplished** - True "one-command, zero-issues" data integration achieved!
-
-For complete CLI documentation, see [CLI-Documentation.md](./CLI-Documentation.md).
+📚 **For complete CLI documentation and advanced features, see [CLI-Documentation.md](./CLI-Documentation.md)**
 
 ## 🗂️ Project Structure
 
