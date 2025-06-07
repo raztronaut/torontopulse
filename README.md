@@ -2,13 +2,35 @@
 
 A modern, interactive 3D city dashboard for Toronto built with React, TypeScript, and Mapbox GL JS. Toronto Pulse visualizes real-time urban data including public transit, road conditions, bike share availability, and environmental metrics in an immersive 3D interface.
 
-**Now featuring complete CORS resolution, XML API support, real-time health monitoring, and true "one-command, zero-issues" data integration!**
+**Now featuring complete CORS resolution, XML API support, real-time health monitoring, true "one-command, zero-issues" data integration, and an AI-powered city data assistant!**
 
 ![Toronto Pulse Dashboard Screenshot](./assets/toronto-pulse-screenshot.png)
+
+## 🤖 AI City Assistant
+
+Toronto Pulse now includes an intelligent AI assistant that can answer questions about Toronto city data using natural language. Ask about transit, infrastructure, events, or any city data and get real-time, data-driven responses.
+
+![AI City Assistant](./ai.png)
+
+### AI Features
+- **Natural Language Queries**: Ask questions in plain English about Toronto city data
+- **Real-Time Data Integration**: Uses live data from all 6+ integrated data sources
+- **Smart Query Analysis**: Automatically determines relevant data sources based on your question
+- **Location-Based Filtering**: Finds data for specific streets, areas, or neighborhoods
+- **Intelligent Summaries**: Provides detailed, contextual responses with actual data
+- **Follow-Up Suggestions**: Offers related questions to explore more data
 
 ![Toronto Pulse Dashboard](https://img.shields.io/badge/Status-Active-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white) ![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB) ![Mapbox](https://img.shields.io/badge/Mapbox-000000?logo=mapbox&logoColor=white) ![CLI](https://img.shields.io/badge/CLI-Tools-blue) ![Testing](https://img.shields.io/badge/Testing-Vitest-green)
 
 ## 🚀 Features
+
+### 🤖 AI-Powered City Assistant
+- **Natural Language Interface**: Ask questions about Toronto city data in plain English
+- **Real-Time Data Analysis**: Get instant insights from live municipal data
+- **Smart Query Processing**: Automatically finds relevant data sources for your questions
+- **Location-Aware Responses**: Ask about specific streets, neighborhoods, or areas
+- **Multi-Source Integration**: Combines data from transit, infrastructure, and environmental sources
+- **Interactive Follow-Ups**: Suggests related questions to explore more city data
 
 ### Real-Time Data Visualization
 - **TTC Live Vehicles**: Track buses and streetcars in real-time
@@ -46,6 +68,7 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 ### Core Technologies
 - **Frontend**: React 18, TypeScript
 - **Mapping**: Mapbox GL JS, React Map GL
+- **AI Integration**: Anthropic Claude API for natural language processing
 - **Styling**: Tailwind CSS, Lucide React Icons
 - **Data Processing**: Turf.js for geospatial operations
 - **Build Tool**: Vite
@@ -67,6 +90,7 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 
 - Node.js 18+ and npm
 - Mapbox access token (free tier available)
+- Anthropic API key (for AI Assistant - optional)
 
 ## 🚀 Quick Start
 
@@ -85,9 +109,14 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
    Create a `.env` file in the root directory:
    ```env
    VITE_MAPBOX_TOKEN=your_mapbox_access_token_here
+   VITE_ANTHROPIC_API_KEY=your_anthropic_api_key_here
    ```
    
-   Get your free Mapbox token at: https://account.mapbox.com/access-tokens/
+   **Required:**
+   - Get your free Mapbox token at: https://account.mapbox.com/access-tokens/
+   
+   **Optional (for AI Assistant):**
+   - Get your Anthropic API key at: https://console.anthropic.com/
 
 4. **Start the development server**
    ```bash
@@ -116,6 +145,17 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 - Toggle individual layers using the sidebar controls
 - Refresh data manually using the refresh button
 - Expand/collapse the control panel for better map viewing
+
+### 🤖 AI Assistant Usage
+- **Access**: Click the "AI Assistant" button in the bottom-right corner
+- **Ask Questions**: Type natural language questions about Toronto city data
+- **Example Queries**:
+  - "What TTC vehicles are running on King Street?"
+  - "Show me bike share stations downtown"
+  - "Are there any road closures affecting the 501 Queen route?"
+  - "What's the water quality like at Toronto beaches?"
+- **Follow-Up**: Use suggested follow-up questions to explore related data
+- **Data Sources**: Responses include which data sources were used
 
 ## 🆕 CLI Tools & Plugin Development
 
@@ -163,8 +203,11 @@ torontopulse/
 │   │   ├── hooks/             # Custom React hooks
 │   │   └── store/             # Global state management
 │   ├── components/            # React UI components
+│   │   └── AIQueryPanel.tsx   # 🤖 AI Assistant interface
 │   ├── config/               # Configuration files
+│   │   └── ai.ts             # 🤖 AI configuration
 │   ├── core/                 # 🆕 Core framework
+│   │   ├── ai/               # 🤖 AI query processing
 │   │   ├── data-sources/     # Plugin system infrastructure
 │   │   ├── cache/            # Caching strategies
 │   │   ├── mapbox/           # Map rendering utilities
@@ -319,6 +362,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **City of Toronto** for providing open data access
 - **Toronto Transit Commission (TTC)** for real-time transit feeds
 - **Mapbox** for excellent mapping services
+- **Anthropic** for Claude AI API enabling natural language city data queries
 - **React and TypeScript communities** for amazing tools and resources
 
 ## 📞 Contact

@@ -1,14 +1,17 @@
 import { useState, useCallback } from 'react';
 import { MapContainer } from './components/MapContainer';
 import { DashboardPanel } from './components/DashboardPanel';
+import { AIQueryPanel } from './components/AIQueryPanel';
 import { LAYER_CONFIGS, DASHBOARD_MODES } from './config/layers';
 import { LayerConfig, DashboardMode } from './types';
 import { DataService } from './services/dataService';
+import type { Feature } from 'geojson';
 
 function App() {
   const [layers, setLayers] = useState<LayerConfig[]>(LAYER_CONFIGS);
   const [currentMode, setCurrentMode] = useState('transit');
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+  const [aiQueryResults, setAiQueryResults] = useState<Feature[]>([]);
 
   const dataService = DataService.getInstance();
 
@@ -73,6 +76,16 @@ function App() {
     // You can add custom logic here for when features are clicked
   }, []);
 
+  const handleAIQueryResults = useCallback((features: Feature[], visualizationHint?: string) => {
+    setAiQueryResults(features);
+    
+    // Optionally adjust the map view based on the results
+    if (features.length > 0 && visualizationHint === 'map') {
+      // You could add logic here to fit the map bounds to the results
+      console.log(`AI Query returned ${features.length} features for map visualization`);
+    }
+  }, []);
+
   const enabledLayers = layers.filter(layer => layer.enabled);
 
   return (
@@ -80,6 +93,7 @@ function App() {
       <MapContainer
         enabledLayers={enabledLayers}
         onLayerClick={handleLayerClick}
+        aiQueryResults={aiQueryResults}
       />
       
       <DashboardPanel
@@ -92,8 +106,14 @@ function App() {
         onToggleExpanded={() => setIsPanelExpanded(!isPanelExpanded)}
       />
 
+      {/* AI Query Panel */}
+      <AIQueryPanel
+        onResultsReceived={handleAIQueryResults}
+        className="fixed bottom-4 right-4 z-30 w-96 max-w-[calc(100vw-2rem)]"
+      />
+
       {/* Attribution */}
-      <div className="absolute bottom-4 right-4 z-10">
+      <div className="absolute bottom-4 left-4 z-10">
         <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-gray-300 shadow-xl border border-gray-700/50">
           <div className="flex items-center space-x-2">
             <span>Data from</span>

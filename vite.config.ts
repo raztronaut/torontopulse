@@ -25,6 +25,15 @@ export default defineConfig({
         headers: {
           'User-Agent': 'TorontoPulse/1.0'
         }
+      },
+      '/api/anthropic': {
+        target: 'https://api.anthropic.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
+        secure: true,
+        headers: {
+          'User-Agent': 'TorontoPulse/1.0'
+        }
       }
     }
   },

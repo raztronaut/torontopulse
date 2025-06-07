@@ -25,6 +25,7 @@ console.log('MapContainer - Token starts with pk.:', MAPBOX_TOKEN?.startsWith('p
 interface MapContainerProps {
   enabledLayers: LayerConfig[];
   onLayerClick?: (feature: any) => void;
+  aiQueryResults?: any[];
 }
 
 interface PopupData {
@@ -45,7 +46,7 @@ type GeoJSONFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties> |
   }>;
 };
 
-export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps) {
+export function MapContainer({ enabledLayers, onLayerClick, aiQueryResults = [] }: MapContainerProps) {
   const mapRef = useRef<MapRef>(null);
   const [viewState, setViewState] = useState(DEFAULT_VIEW_STATE);
   const [popupData, setPopupData] = useState<PopupData | null>(null);
@@ -312,6 +313,65 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
         );
       }
     });
+
+    // Add AI Query Results layer
+    if (aiQueryResults && aiQueryResults.length > 0) {
+      const aiGeoJSON: GeoJSONFeatureCollection = {
+        type: 'FeatureCollection',
+        features: aiQueryResults.map(feature => ({
+          ...feature,
+          properties: {
+            ...feature.properties,
+            layerId: 'ai-query-results',
+            isAIResult: true
+          }
+        }))
+      };
+
+      layers.push(
+        <Source
+          key="ai-query-results"
+          id="ai-query-results"
+          type="geojson"
+          data={aiGeoJSON}
+        >
+          <Layer
+            id="ai-query-results-layer"
+            type="circle"
+            paint={{
+              'circle-radius': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                10, 8,
+                15, 12
+              ] as any,
+              'circle-color': '#3b82f6', // Blue color for AI results
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#ffffff',
+              'circle-opacity': 0.8
+            }}
+          />
+          <Layer
+            id="ai-query-results-highlight"
+            type="circle"
+            paint={{
+              'circle-radius': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                10, 12,
+                15, 18
+              ] as any,
+              'circle-color': 'transparent',
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#3b82f6',
+              'circle-opacity': 0.6
+            }}
+          />
+        </Source>
+      );
+    }
 
     return layers;
   };
@@ -718,6 +778,71 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
             </div>
           </div>
         );
+      case 'ai-query-results':
+        return (
+          <div className="min-w-[250px]">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-4 h-4 rounded-full bg-blue-500 flex-shrink-0"></div>
+              <h3 className="font-bold text-white text-lg">
+                🤖 AI Query Result
+              </h3>
+            </div>
+            
+            <div className="space-y-2">
+              {/* Show original source information */}
+              {properties.sourceId && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Data Source</span>
+                  <span className="text-blue-300 font-semibold capitalize">
+                    {properties.sourceId.replace(/-/g, ' ')}
+                  </span>
+                </div>
+              )}
+              
+              {/* Show relevant properties based on source */}
+              {properties.name && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Name</span>
+                  <span className="text-white font-semibold">{properties.name}</span>
+                </div>
+              )}
+              
+              {properties.location && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Location</span>
+                  <span className="text-white font-semibold">{properties.location}</span>
+                </div>
+              )}
+              
+              {properties.route && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Route</span>
+                  <span className="text-white font-semibold">{properties.route}</span>
+                </div>
+              )}
+              
+              {properties.beachName && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Beach</span>
+                  <span className="text-white font-semibold">{properties.beachName}</span>
+                </div>
+              )}
+              
+              {properties.bikes_available !== undefined && (
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Bikes Available</span>
+                  <span className="text-white font-semibold">{properties.bikes_available}</span>
+                </div>
+              )}
+              
+              <div className="pt-2 border-t border-gray-600">
+                <div className="text-xs text-blue-400 text-center">
+                  Found by AI Query
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return <div className="text-white">Feature details</div>;
     }
@@ -756,7 +881,10 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
           setMapError(`Map failed to load: ${error.error?.message || 'Unknown error'}`);
         }}
         onClick={handleMapClick}
-        interactiveLayerIds={enabledLayers.map(l => `${l.id}-layer`)}
+        interactiveLayerIds={[
+          ...enabledLayers.map(l => `${l.id}-layer`),
+          ...(aiQueryResults && aiQueryResults.length > 0 ? ['ai-query-results-layer'] : [])
+        ]}
         // Remove terrain for now as it might cause issues
         // terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
       >
