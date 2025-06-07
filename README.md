@@ -4,13 +4,14 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 
 **Now featuring complete CORS resolution, XML API support, real-time health monitoring, true "one-command, zero-issues" data integration, and an AI-powered city data assistant!**
 
-![Toronto Pulse Dashboard Screenshot](./assets/toronto-pulse-screenshot.png)
+<div align="center">
+  <img src="./assets/toronto-pulse-screenshot.png" alt="Toronto Pulse Dashboard Screenshot" width="45%" height="300" style="margin-right: 2%; object-fit: cover;">
+  <img src="./assets/ai.png" alt="AI City Assistant" width="45%" height="300" style="object-fit: cover;">
+</div>
 
 ## 🤖 AI City Assistant
 
 Toronto Pulse now includes an intelligent AI assistant that can answer questions about Toronto city data using natural language. Ask about transit, infrastructure, events, or any city data and get real-time, data-driven responses.
-
-![AI City Assistant](./assets/ai.png)
 
 ### AI Features
 - **Natural Language Queries**: Ask questions in plain English about Toronto city data
