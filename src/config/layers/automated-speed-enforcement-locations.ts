@@ -3,17 +3,11 @@ import { LayerConfig } from '../types.js';
 export const automatedSpeedEnforcementLocationsLayerConfig: LayerConfig = {
   id: 'automated-speed-enforcement-locations',
   name: 'Automated Speed Enforcement Locations',
-  description: 'Automated Speed Enforcement (ASE) is an automated system that uses a camera and a speed measurement
-device to detect and capture images of vehicles travelling in excess of the posted speed limit. It is designed to
-work in tandem with other methods and strategies, including engineering measures, education initiatives and
-traditional police enforcement. ASE is focused on altering driver behaviour to decrease speeding and increase
-safety.
+  description: `Automated Speed Enforcement (ASE) is an automated system that uses a camera and a speed measurement device to detect and capture images of vehicles travelling in excess of the posted speed limit. It is designed to work in tandem with other methods and strategies, including engineering measures, education initiatives and traditional police enforcement. ASE is focused on altering driver behaviour to decrease speeding and increase safety.
 
-This dataset includes the active and planned locations of City of Toronto's Automated Speed Enforcement
-systems by latitude and longitude.
+This dataset includes the active and planned locations of City of Toronto's Automated Speed Enforcement systems by latitude and longitude.
 
-For a list of historical locations, please visit the Automated Speed Enforcement website or contact us at the
-email listed.',
+For a list of historical locations, please visit the Automated Speed Enforcement website or contact us at the email listed.`,
   enabled: true,
   refreshInterval: 604800000,
   metadata: {

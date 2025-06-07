@@ -1,7 +1,7 @@
-import { PluginConfig, DatasetMetadata, ValidationResult, TestResult } from '../types.js';
+import { PluginConfig, ValidationResult, TestResult } from '../types.js';
 import { TorontoDataService } from './TorontoDataService.js';
-import fs from 'fs-extra';
-import path from 'path';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 
 export interface ValidationOptions {
   plugin?: string;
@@ -29,7 +29,6 @@ export interface PluginHealth {
 }
 
 export class ValidationService {
-  private torontoDataService = new TorontoDataService();
 
   async validatePlugin(pluginId: string, options: ValidationOptions = {}): Promise<ValidationResult> {
     const results: TestResult[] = [];
@@ -285,7 +284,7 @@ export class ValidationService {
   /**
    * Validate proxy configuration
    */
-  private async validateProxyConfiguration(pluginId: string): Promise<BrowserValidationResult> {
+  private async validateProxyConfiguration(_pluginId: string): Promise<BrowserValidationResult> {
     try {
       const viteConfigPath = 'vite.config.ts';
       
@@ -638,7 +637,7 @@ export class ValidationService {
     }
   }
 
-  private checkLayerConfiguration(config: PluginConfig): Promise<{ success: boolean; issue?: string }> {
+  private checkLayerConfiguration(_config: PluginConfig): Promise<{ success: boolean; issue?: string }> {
     // This would check layer config files
     return Promise.resolve({ success: true });
   }

@@ -113,6 +113,27 @@ export class FieldAnalysisService {
       return 'transit-indicator';
     }
 
+    // Check actual values for additional context if available
+    if (values && values.length > 0) {
+      const sampleValue = values[0];
+      
+      // Check for coordinate-like values
+      if (typeof sampleValue === 'number' && Math.abs(sampleValue) < 180) {
+        if (lowerName.includes('lat') || lowerName.includes('y')) {
+          return 'latitude';
+        }
+        if (lowerName.includes('lon') || lowerName.includes('lng') || lowerName.includes('x')) {
+          return 'longitude';
+        }
+      }
+      
+      // Check for boolean-like values
+      if (typeof sampleValue === 'boolean' || 
+          (typeof sampleValue === 'string' && /^(true|false|yes|no|on|off)$/i.test(sampleValue))) {
+        return 'boolean-indicator';
+      }
+    }
+
     return 'generic';
   }
 

@@ -29,6 +29,7 @@ export interface ValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
+  details?: any;
 }
 
 export interface DatasetInfo {
