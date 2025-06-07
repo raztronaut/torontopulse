@@ -10,7 +10,9 @@ import {
   Globe, 
   RefreshCw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Camera,
+  Eye
 } from 'lucide-react';
 import { LayerConfig, DashboardMode } from '../types';
 import { DASHBOARD_MODES } from '../config/layers';
@@ -24,6 +26,8 @@ const IconMap = {
   Building,
   Leaf,
   Globe,
+  Camera,
+  Eye,
 };
 
 interface DashboardPanelProps {

@@ -1,6 +1,9 @@
 import { DataSourcePlugin } from './types';
 import { DataSourceRegistry } from './registry';
 
+
+const knownPlugins: DataSourcePlugin[] = [];
+
 export class PluginLoader {
   private registry: DataSourceRegistry;
 
@@ -24,6 +27,8 @@ export class PluginLoader {
         module = await import('../../domains/infrastructure/road-restrictions/index.js');
       } else if (pluginPath === 'environment/toronto-beaches-observations') {
         module = await import('../../domains/environment/toronto-beaches-observations/index.js');
+      } else if (pluginPath === 'infrastructure/automated-speed-enforcement-locations') {
+        module = await import('../../domains/infrastructure/automated-speed-enforcement-locations/index.js');
       } else {
         // Fallback to dynamic import for unknown plugins
         module = await import(`../../domains/${pluginPath}/index.js`);
@@ -65,7 +70,8 @@ export class PluginLoader {
       'transportation/ttc-vehicles',
       'transportation/bike-share-toronto',
       'infrastructure/road-restrictions',
-      'environment/toronto-beaches-observations'
+      'environment/toronto-beaches-observations',
+      'infrastructure/automated-speed-enforcement-locations'
     ];
 
     for (const pluginPath of knownPlugins) {

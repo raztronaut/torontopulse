@@ -63,6 +63,8 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
     enabledLayers.some(l => l.id === 'beach-water-quality'), 3600000);
   const beachObservationsData = useDataLayer('toronto-beaches-observations', 
     enabledLayers.some(l => l.id === 'toronto-beaches-observations'), 86400000);
+  const speedEnforcementData = useDataLayer('automated-speed-enforcement-locations', 
+    enabledLayers.some(l => l.id === 'automated-speed-enforcement-locations'), 604800000);
 
   const onMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -217,6 +219,27 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
           'circle-stroke-color': '#ffffff',
           'circle-opacity': 0.8
         };
+      case 'automated-speed-enforcement-locations':
+        return {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            8, 4,
+            12, 6,
+            16, 8
+          ] as any,
+          'circle-color': [
+            'match',
+            ['get', 'status'],
+            'Active', '#dc2626',    // Red for active cameras
+            'Planned', '#f59e0b',   // Orange for planned cameras
+            '#6b7280'               // Gray for unknown status
+          ] as any,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 0.8
+        };
       default:
         return {
           'circle-radius': 5,
@@ -246,6 +269,9 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
           break;
         case 'toronto-beaches-observations':
           geoJSON = beachObservationsData.geoJSON;
+          break;
+        case 'automated-speed-enforcement-locations':
+          geoJSON = speedEnforcementData.geoJSON;
           break;
       }
 

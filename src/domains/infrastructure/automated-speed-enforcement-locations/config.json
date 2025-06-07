@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "id": "automated-speed-enforcement-locations",
+    "name": "Automated Speed Enforcement Locations",
+    "domain": "infrastructure",
+    "version": "1.0.0",
+    "description": "Automated Speed Enforcement (ASE) is an automated system that uses a camera and a speed measurement\r\ndevice to detect and capture images of vehicles travelling in excess of the posted speed limit. It is designed to\r\nwork in tandem with other methods and strategies, including engineering measures, education initiatives and\r\ntraditional police enforcement. ASE is focused on altering driver behaviour to decrease speeding and increase\r\nsafety.\r\n\r\nThis dataset includes the active and planned locations of City of Toronto's Automated Speed Enforcement\r\nsystems by latitude and longitude.\r\n\r\nFor a list of historical locations, please visit the Automated Speed Enforcement website or contact us at the\r\nemail listed.",
+    "refreshInterval": 604800000,
+    "reliability": "high",
+    "tags": [
+      "driving",
+      "enforcement",
+      "speed"
+    ],
+    "author": "Toronto Pulse Team",
+    "dataLicense": "Open Government License - Ontario"
+  },
+  "api": {
+    "type": "geojson",
+    "baseUrl": "/api/toronto-open-data/api/3/action/datastore_search?resource_id=e25e9460-a0e8-469c-b9fb-9a4837ac6c1c",
+    "authentication": null,
+    "rateLimit": {
+      "requests": 60,
+      "window": 60000
+    },
+    "timeout": 10000
+  },
+  "transform": {
+    "strategy": "geojson-to-geojson",
+    "mappings": {
+      "latitude": "latitude",
+      "longitude": "longitude",
+      "id": "id"
+    }
+  },
+  "visualization": {
+    "layer": {
+      "type": "circle",
+      "paint": {
+        "circle-radius": 6,
+        "circle-color": "#dc2626",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff"
+      }
+    },
+    "popup": {
+      "template": "automated-speed-enforcement-locations-popup"
+    }
+  },
+  "cache": {
+    "strategy": "semi-static",
+    "ttl": 604800000,
+    "storage": "memory"
+  }
+}
