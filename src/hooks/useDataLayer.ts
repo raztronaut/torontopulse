@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DataService } from '../services/dataService';
 import { TTCVehicle, RoadRestriction, BikeStation, BeachWaterQuality } from '../types';
+import { useDataLayerV2 } from '../app/hooks/useDataLayerV2';
 
 export type LayerData = {
   'ttc-vehicles': TTCVehicle[];
@@ -9,11 +10,36 @@ export type LayerData = {
   'beach-water-quality': BeachWaterQuality[];
 };
 
+// Map layer IDs to plugin IDs
+const getPluginId = (layerId: string): string => {
+  switch (layerId) {
+    case 'bike-share':
+      return 'bike-share-toronto';
+    case 'ttc-vehicles':
+      return 'ttc-vehicles';
+    case 'road-restrictions':
+      return 'road-restrictions';
+    default:
+      return layerId;
+  }
+};
+
 export function useDataLayer<T extends keyof LayerData>(
   layerId: T,
   enabled: boolean,
   refreshInterval?: number
 ) {
+  // Try to use the new plugin system for supported layers
+  const isPluginSupported = layerId === 'ttc-vehicles' || layerId === 'bike-share' || layerId === 'road-restrictions';
+  
+  // Use new plugin system for supported layers
+  const pluginResult = useDataLayerV2(
+    getPluginId(layerId as string), 
+    enabled && isPluginSupported, 
+    refreshInterval
+  );
+
+  // Legacy system state for unsupported layers
   const [data, setData] = useState<LayerData[T] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +48,7 @@ export function useDataLayer<T extends keyof LayerData>(
   const dataService = DataService.getInstance();
 
   const fetchData = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled || isPluginSupported) return; // Skip if using plugin system
     
     setLoading(true);
     setError(null);
@@ -31,9 +57,6 @@ export function useDataLayer<T extends keyof LayerData>(
       let result: LayerData[T];
       
       switch (layerId) {
-        case 'ttc-vehicles':
-          result = await dataService.fetchTTCVehicles() as LayerData[T];
-          break;
         case 'road-restrictions':
           result = await dataService.fetchRoadRestrictions() as LayerData[T];
           break;
@@ -56,11 +79,11 @@ export function useDataLayer<T extends keyof LayerData>(
     } finally {
       setLoading(false);
     }
-  }, [layerId, enabled, dataService]);
+  }, [layerId, enabled, dataService, isPluginSupported]);
 
-  // Initial fetch and refresh interval
+  // Initial fetch and refresh interval for legacy system
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || isPluginSupported) {
       setData(null);
       return;
     }
@@ -71,13 +94,21 @@ export function useDataLayer<T extends keyof LayerData>(
       const interval = setInterval(fetchData, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [enabled, refreshInterval, fetchData]);
+  }, [enabled, refreshInterval, fetchData, isPluginSupported]);
 
   const refresh = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
+    if (isPluginSupported) {
+      pluginResult.refresh();
+    } else {
+      fetchData();
+    }
+  }, [fetchData, isPluginSupported, pluginResult]);
 
   const getGeoJSON = useCallback(() => {
+    if (isPluginSupported) {
+      return pluginResult.geoJSON;
+    }
+    
     if (!data) return null;
     
     return dataService.toGeoJSON(
@@ -87,7 +118,19 @@ export function useDataLayer<T extends keyof LayerData>(
         ...item,
       })
     );
-  }, [data, dataService, layerId]);
+  }, [data, dataService, layerId, isPluginSupported, pluginResult.geoJSON]);
+
+  // Return the appropriate result based on whether we're using plugins
+  if (isPluginSupported) {
+    return {
+      data: null, // Plugin system doesn't expose raw data
+      loading: pluginResult.loading,
+      error: pluginResult.error,
+      lastUpdated: pluginResult.lastUpdated,
+      refresh,
+      geoJSON: pluginResult.geoJSON,
+    };
+  }
 
   return {
     data,

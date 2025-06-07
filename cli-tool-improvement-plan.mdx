@@ -1,0 +1,158 @@
+# CLI Tool Improvement Plan
+
+## 📝 Background & Rationale
+
+During the integration of the Road Restrictions plugin, several issues surfaced that required manual debugging and code refactoring:
+
+- The transformer and validator expected different data structures, causing validation errors.
+- The plugin system validated raw API data instead of the transformed GeoJSON, leading to schema mismatches.
+- Manual updates were needed for plugin registration and layer mapping.
+- Console log checks and UI verification were required to catch integration issues.
+
+**These issues highlighted the need for more robust automation, type safety, and integration checks in the CLI tool.**
+
+---
+
+## 🚦 Improvement Plan (with Implementation Details)
+
+### 1. Automated Data Flow Checks
+- **What:** Auto-generate tests that verify the plugin's fetch → transform → validate sequence, ensuring type compatibility at each stage.
+- **Why:** Prevents mismatches like the validator expecting a raw array while the transformer outputs GeoJSON.
+- **How:**
+  - Add a CLI command:
+    ```bash
+    npm run tp verify:integration --all
+    ```
+  - This command should:
+    1. Load each plugin.
+    2. Run `fetcher.fetch()`, `transformer.transform()`, and `validator.validate()` in sequence.
+    3. Assert that the output of each step matches the expected TypeScript type.
+    4. Report mismatches and suggest fixes.
+- **Sample Code:**
+    ```typescript
+    // src/tools/cli/commands/verify.ts
+    for (const plugin of allPlugins) {
+      const raw = await plugin.fetcher.fetch();
+      const geojson = plugin.transformer.transform(raw);
+      const validation = plugin.validator.validate(geojson);
+      if (!validation.valid) {
+        console.warn(`[${plugin.metadata.id}] Validation failed:`, validation.errors);
+      }
+      // Type assertions (using zod or tsd)
+    }
+    ```
+
+### 2. Schema Inference & Validation
+- **What:** Prompt for the expected API response structure during plugin generation and scaffold the transformer/validator accordingly.
+- **Why:** Avoids manual property extraction bugs (e.g., needing to extract `Closure` from the API response).
+- **How:**
+  - During `generate:datasource`, ask:
+    - "Is the data an array, or an object with a property containing the array?"
+    - "What is the property name (if any)?"
+  - Use this info to scaffold the transformer:
+    ```typescript
+    // Example transformer template
+    let items = data;
+    if (typeof data === 'object' && !Array.isArray(data)) {
+      items = data['<propertyName>'];
+    }
+    ```
+  - Scaffold the validator to expect the same structure.
+- **Sample Prompt:**
+    ```typescript
+    const { arrayProperty } = await inquirer.prompt([
+      { type: 'input', name: 'arrayProperty', message: 'If the data is nested, what is the property name containing the array? (Leave blank if direct array)' }
+    ]);
+    ```
+
+### 3. TypeScript Type Enforcement
+- **What:** Generate and enforce TypeScript types for both raw API responses and transformed data.
+- **Why:** Ensures that transformer and validator interfaces are always compatible, catching issues at compile time.
+- **How:**
+  - During plugin generation, create:
+    - `types/raw.ts` for the API response
+    - `types/geojson.ts` for the transformed data
+  - Use these types in fetcher, transformer, and validator signatures.
+  - Add a CLI check (using `tsd` or similar) to ensure type compatibility.
+- **Sample Type Generation:**
+    ```typescript
+    // src/domains/infrastructure/road-restrictions/types/raw.ts
+    export interface RoadRestrictionRaw {
+      id: string;
+      latitude: number;
+      longitude: number;
+      // ...other fields
+    }
+    ```
+
+### 4. Integration Verification Command
+- **What:** Enhance `verify:integration` to simulate a full data flow for each plugin and check for mismatches.
+- **Why:** Catches issues before manual testing, such as the validator receiving the wrong data structure.
+- **How:**
+  - Run fetch, transform, and validate for each plugin.
+  - Check that the output of each step matches the expected type.
+  - Report and optionally auto-fix common issues (e.g., wrong property extraction).
+- **Sample CLI Output:**
+    ```
+    🔍 Verifying plugin: road-restrictions
+    ✅ Fetch: API returned object with property 'Closure'
+    ✅ Transform: Output is valid GeoJSON FeatureCollection
+    ✅ Validate: Passed
+    ```
+
+### 5. Legacy Detection & Migration Guidance
+- **What:** Warn if a new plugin is mapped in `useDataLayer.ts` but not registered in the loader, or vice versa.
+- **Why:** Prevents silent failures where a plugin is not actually used by the UI.
+- **How:**
+  - CLI scans both `useDataLayer.ts` and `loader.ts`.
+  - Reports any mismatches.
+  - Suggests migration steps if legacy code is detected.
+- **Sample Check:**
+    ```typescript
+    const mappedLayers = extractLayerMappings('src/hooks/useDataLayer.ts');
+    const registeredPlugins = extractPluginRegistrations('src/core/data-sources/loader.ts');
+    for (const layer of mappedLayers) {
+      if (!registeredPlugins.includes(layer.pluginId)) {
+        console.warn(`Layer ${layer.id} is mapped but plugin ${layer.pluginId} is not registered!`);
+      }
+    }
+    ```
+
+### 6. Developer Feedback & Documentation
+- **What:** Output clear next steps after plugin generation, including test and verification commands.
+- **Why:** Guides developers to catch integration issues early and follow best practices.
+- **How:**
+  - After generating a plugin, print:
+    ```
+    ✅ Plugin generated!
+    👉 Next steps:
+       1. Test: npm run tp test:datasource <plugin-id> --validate
+       2. Verify: npm run tp verify:integration --plugin=<plugin-id>
+       3. Enable the layer in the UI and check the map
+    ```
+  - Add troubleshooting tips for common issues.
+
+---
+
+## 📋 Summary Table
+
+| Improvement                | Problem Addressed                                 | Solution Mechanism                |
+|----------------------------|---------------------------------------------------|-----------------------------------|
+| Automated Data Flow Checks | Validator/transformer type mismatches             | Auto-generated integration tests  |
+| Schema Inference           | Manual property extraction bugs                   | Prompt & scaffold correct logic   |
+| TypeScript Enforcement     | Interface/type incompatibility                    | Generated types & compile checks  |
+| Integration Verification   | Manual/late discovery of integration issues       | Enhanced CLI verification         |
+| Legacy Detection           | Plugins not registered or mapped                  | Cross-check & migration hints     |
+| Feedback & Docs            | Unclear next steps for developers                 | CLI output & troubleshooting tips |
+
+---
+
+## 🧭 Why These Changes?
+
+Based on our recent experience, these improvements will:
+- **Reduce manual debugging** by surfacing integration issues earlier.
+- **Prevent type and data flow mismatches** by enforcing contracts at generation and test time.
+- **Streamline onboarding and migration** for new plugins and developers.
+- **Increase confidence** that new data sources will work out-of-the-box, with less risk of silent failures or UI issues.
+
+By embedding these checks and workflows into the CLI, we ensure that future plugin integrations are robust, maintainable, and developer-friendly. 

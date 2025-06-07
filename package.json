@@ -3,38 +3,60 @@
   "version": "1.0.0",
   "description": "3D React web-based city dashboard for Toronto using Mapbox GL JS",
   "private": true,
+  "bin": {
+    "toronto-pulse": "./dist/tools/cli/index.js"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "build:cli": "tsc --project tsconfig.cli.json",
+    "tp": "tsx src/tools/cli/index.ts",
+    "test:ttc": "tsx src/tools/cli/simple-test.ts",
+    "demo:phase3": "tsx src/tools/cli/demo.ts"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",
     "@types/protobufjs": "^6.0.0",
     "axios": "^1.6.2",
+    "chalk": "^5.4.1",
     "clsx": "^2.0.0",
+    "commander": "^14.0.0",
+    "fs-extra": "^11.3.0",
+    "inquirer": "^12.6.3",
     "lucide-react": "^0.294.0",
     "mapbox-gl": "^3.0.1",
+    "ora": "^8.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-map-gl": "^7.1.7",
-    "tailwind-merge": "^2.0.0"
+    "tailwind-merge": "^2.0.0",
+    "zod": "^3.25.56"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.8",
     "@types/mapbox-gl": "^3.1.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
     "@typescript-eslint/parser": "^6.10.0",
     "@vitejs/plugin-react": "^4.1.1",
+    "@vitest/ui": "^3.2.2",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.53.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",
+    "jsdom": "^26.1.0",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
+    "tsx": "^4.19.4",
     "typescript": "^5.2.2",
-    "vite": "^5.0.0"
+    "vite": "^5.0.0",
+    "vitest": "^3.2.2"
   }
 }

@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "id": "road-restrictions",
+    "name": "Road Restrictions",
+    "domain": "infrastructure",
+    "version": "1.0.0",
+    "description": "Road Restrictions data source for Toronto Pulse",
+    "refreshInterval": 60000,
+    "reliability": "high",
+    "tags": [
+      "infrastructure",
+      "toronto",
+      "real-time"
+    ],
+    "author": "Toronto Pulse Team",
+    "dataLicense": "Open Government License - Ontario"
+  },
+  "api": {
+    "type": "json",
+    "baseUrl": "https://secure.toronto.ca/opendata/cart/road_restrictions/v3?format=json",
+    "authentication": null,
+    "rateLimit": {
+      "requests": 60,
+      "window": 60000
+    },
+    "timeout": 10000
+  },
+  "transform": {
+    "strategy": "json-to-geojson",
+    "mappings": {
+      "latitude": "$.lat",
+      "longitude": "$.lon",
+      "id": "$.id",
+      "name": "$.name"
+    }
+  },
+  "visualization": {
+    "layer": {
+      "type": "circle",
+      "paint": {
+        "circle-radius": 6,
+        "circle-color": "#dc2626",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff"
+      }
+    },
+    "popup": {
+      "template": "road-restrictions-popup"
+    }
+  },
+  "cache": {
+    "strategy": "real-time",
+    "ttl": 60000,
+    "storage": "memory"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "id": "ttc-vehicles",
+    "name": "TTC Live Vehicles",
+    "domain": "transportation",
+    "version": "1.0.0",
+    "description": "Real-time bus and streetcar positions via TTC XML API",
+    "refreshInterval": 30000,
+    "reliability": "high",
+    "tags": ["transit", "real-time", "toronto"],
+    "author": "Toronto Pulse Team",
+    "dataLicense": "Open Government License - Ontario"
+  },
+  "api": {
+    "type": "xml",
+    "baseUrl": "https://webservices.umoiq.com/service/publicXMLFeed",
+    "authentication": null,
+    "rateLimit": {
+      "requests": 60,
+      "window": 60000
+    },
+    "timeout": 10000
+  },
+  "transform": {
+    "strategy": "ttc-xml-custom",
+    "mappings": {
+      "latitude": "@lat",
+      "longitude": "@lon",
+      "id": "@id",
+      "route": "@routeTag",
+      "direction": "@dirTag",
+      "heading": "@heading",
+      "speed": "@speedKmHr"
+    }
+  },
+  "visualization": {
+    "layer": {
+      "type": "circle",
+      "paint": {
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10, 4,
+          15, 8
+        ],
+        "circle-color": [
+          "case",
+          ["==", ["get", "vehicle_type"], "streetcar"], "#dc2626",
+          ["==", ["get", "vehicle_type"], "bus"], "#2563eb",
+          "#6b7280"
+        ],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff"
+      }
+    },
+    "popup": {
+      "template": "ttc-vehicle-popup"
+    }
+  },
+  "cache": {
+    "strategy": "real-time",
+    "ttl": 30000,
+    "storage": "memory"
+  }
+} 

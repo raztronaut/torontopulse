@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "id": "bike-share-toronto",
+    "name": "Bike Share Toronto",
+    "domain": "transportation",
+    "version": "1.0.0",
+    "description": "Bike Share Toronto station data via GBFS API",
+    "refreshInterval": 60000,
+    "reliability": "high",
+    "tags": [
+      "transportation",
+      "toronto",
+      "real-time",
+      "bike-share",
+      "gbfs"
+    ],
+    "author": "Toronto Pulse Team",
+    "dataLicense": "Open Government License - Ontario"
+  },
+  "api": {
+    "type": "json",
+    "baseUrl": "https://tor.publicbikesystem.net/ube/gbfs/v1/en",
+    "endpoints": {
+      "station_information": "/station_information",
+      "station_status": "/station_status"
+    },
+    "authentication": null,
+    "rateLimit": {
+      "requests": 60,
+      "window": 60000
+    },
+    "timeout": 10000
+  },
+  "transform": {
+    "strategy": "gbfs-stations",
+    "mappings": {
+      "latitude": "$.lat",
+      "longitude": "$.lon",
+      "id": "$.station_id",
+      "name": "$.name",
+      "capacity": "$.capacity",
+      "bikes_available": "$.num_bikes_available",
+      "docks_available": "$.num_docks_available",
+      "is_renting": "$.is_renting",
+      "is_returning": "$.is_returning"
+    }
+  },
+  "visualization": {
+    "layer": {
+      "type": "circle",
+      "paint": {
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["get", "bikes_available"],
+          0, 3,
+          5, 6,
+          15, 10
+        ],
+        "circle-color": [
+          "interpolate",
+          ["linear"],
+          ["get", "bikes_available"],
+          0, "#dc2626",
+          5, "#f59e0b",
+          10, "#10b981"
+        ],
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#ffffff"
+      }
+    },
+    "popup": {
+      "template": "bike-share-toronto-popup"
+    }
+  },
+  "cache": {
+    "strategy": "real-time",
+    "ttl": 60000,
+    "storage": "memory"
+  }
+}
