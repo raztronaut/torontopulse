@@ -8,6 +8,7 @@ export type LayerData = {
   'road-restrictions': RoadRestriction[];
   'bike-share': BikeStation[];
   'beach-water-quality': BeachWaterQuality[];
+  'toronto-beaches-observations': any[]; // Beach observation data
 };
 
 // Map layer IDs to plugin IDs
@@ -19,6 +20,8 @@ const getPluginId = (layerId: string): string => {
       return 'ttc-vehicles';
     case 'road-restrictions':
       return 'road-restrictions';
+    case 'toronto-beaches-observations':
+      return 'toronto-beaches-observations';
     default:
       return layerId;
   }
@@ -30,7 +33,7 @@ export function useDataLayer<T extends keyof LayerData>(
   refreshInterval?: number
 ) {
   // Try to use the new plugin system for supported layers
-  const isPluginSupported = layerId === 'ttc-vehicles' || layerId === 'bike-share' || layerId === 'road-restrictions';
+  const isPluginSupported = layerId === 'ttc-vehicles' || layerId === 'bike-share' || layerId === 'road-restrictions' || layerId === 'toronto-beaches-observations';
   
   // Use new plugin system for supported layers
   const pluginResult = useDataLayerV2(

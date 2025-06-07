@@ -41,6 +41,16 @@ export const LAYER_CONFIGS: LayerConfig[] = [
     source: 'https://open.toronto.ca/dataset/toronto-beaches-water-quality/',
     refreshInterval: 3600000, // 1 hour
   },
+  {
+    id: 'toronto-beaches-observations',
+    name: 'Toronto Beaches Observations',
+    description: 'Daily observations made by city staff on Toronto beaches including temperature, turbidity, wave action, and wildlife counts',
+    icon: 'Eye',
+    color: '#059669', // Emerald green
+    enabled: false,
+    source: 'https://open.toronto.ca/dataset/toronto-beaches-observations/',
+    refreshInterval: 86400000, // 24 hours (daily data)
+  },
 ];
 
 export const DASHBOARD_MODES: DashboardMode[] = [
@@ -65,7 +75,7 @@ export const DASHBOARD_MODES: DashboardMode[] = [
     name: 'Environment',
     description: 'Environmental conditions and quality',
     icon: 'Leaf',
-    layers: ['beach-water-quality'],
+    layers: ['beach-water-quality', 'toronto-beaches-observations'],
     color: '#4b5563', // Light gray
   },
   {
@@ -73,7 +83,7 @@ export const DASHBOARD_MODES: DashboardMode[] = [
     name: 'All Data',
     description: 'View all available data layers',
     icon: 'Globe',
-    layers: ['ttc-vehicles', 'road-restrictions', 'bike-share', 'beach-water-quality'],
+    layers: ['ttc-vehicles', 'road-restrictions', 'bike-share', 'beach-water-quality', 'toronto-beaches-observations'],
     color: '#6b7280', // Lighter gray
   },
 ];

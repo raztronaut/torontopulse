@@ -22,6 +22,8 @@ export class PluginLoader {
         module = await import('../../domains/transportation/bike-share-toronto/index.js');
       } else if (pluginPath === 'infrastructure/road-restrictions') {
         module = await import('../../domains/infrastructure/road-restrictions/index.js');
+      } else if (pluginPath === 'environment/toronto-beaches-observations') {
+        module = await import('../../domains/environment/toronto-beaches-observations/index.js');
       } else {
         // Fallback to dynamic import for unknown plugins
         module = await import(`../../domains/${pluginPath}/index.js`);
@@ -62,7 +64,8 @@ export class PluginLoader {
     const knownPlugins = [
       'transportation/ttc-vehicles',
       'transportation/bike-share-toronto',
-      'infrastructure/road-restrictions'
+      'infrastructure/road-restrictions',
+      'environment/toronto-beaches-observations'
     ];
 
     for (const pluginPath of knownPlugins) {

@@ -10,8 +10,11 @@ export interface PluginConfig {
   author: string;
   dataLicense: string;
   includeTests?: boolean;
+  /**
+   * If the API response wraps the data array inside an object property, specify that property name here.
+   * Leave undefined when the API returns a top-level array.
+   */
   arrayProperty?: string;
-  sampleResponse?: any;
 }
 
 export interface TestResult {

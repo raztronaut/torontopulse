@@ -8,19 +8,7 @@ export async function generatePlugin(config: PluginConfig): Promise<void> {
   
   // Create directory structure
   await fs.ensureDir(pluginPath);
-  // Create types directory
-  const typesPath = path.join(pluginPath, 'types');
-  await fs.ensureDir(typesPath);
-
-  // Generate types/raw.ts if sampleResponse is provided
-  if (config.sampleResponse) {
-    const rawType = inferRawType(config.sampleResponse, config.name);
-    await fs.writeFile(path.join(typesPath, 'raw.ts'), rawType);
-  }
-  // Generate types/geojson.ts as a re-export
-  const geojsonType = `export { FeatureCollection, Feature } from 'geojson';\n`;
-  await fs.writeFile(path.join(typesPath, 'geojson.ts'), geojsonType);
-
+  
   // Generate config.json
   await generateConfigFile(pluginPath, config);
   
@@ -30,24 +18,15 @@ export async function generatePlugin(config: PluginConfig): Promise<void> {
   await generateValidatorFile(pluginPath, config);
   await generateIndexFile(pluginPath, config);
   
+  // Generate TypeScript helper types (raw API response + GeoJSON)
+  await generateTypesFiles(pluginPath, config);
+  
   if (config.includeTests) {
     await generateTestFile(pluginPath, config);
   }
   
   // Generate README
   await generateReadmeFile(pluginPath, config);
-  // Print summary and next steps
-  console.log('\n✅ Plugin generated!');
-  if (config.sampleResponse) {
-    console.log('🔎 Inferred raw type:');
-    console.log(inferRawType(config.sampleResponse, config.name));
-  }
-  console.log('👉 Next steps:');
-  console.log(`   1. Test: npm run tp test:datasource ${kebabCase(config.name)} --validate`);
-  console.log(`   2. Verify: npm run tp verify:integration --plugin=${kebabCase(config.name)}`);
-  console.log('   3. Enable the layer in the UI and check the map');
-  console.log('   4. If you see type or data errors, check your transformer and validator logic.');
-  console.log('   5. For troubleshooting tips, see CLI output and docs.');
 }
 
 async function generateConfigFile(pluginPath: string, config: PluginConfig): Promise<void> {
@@ -105,13 +84,7 @@ async function generateConfigFile(pluginPath: string, config: PluginConfig): Pro
 
 async function generateFetcherFile(pluginPath: string, config: PluginConfig): Promise<void> {
   const className = pascalCase(config.name) + 'Fetcher';
-  let typeImport = '';
-  let returnType = 'any';
-  if (config.sampleResponse) {
-    typeImport = `import type { ${pascalCase(config.name)}Raw } from './types/raw';\n`;
-    returnType = `${pascalCase(config.name)}Raw`;
-  }
-  const content = `${typeImport}import { DataFetcher } from '../../../core/data-sources/types.js';
+  const content = `import { DataFetcher } from '../../../core/data-sources/types.js';
 
 /**
  * Fetcher for ${config.name}
@@ -124,7 +97,7 @@ export class ${className} implements DataFetcher {
     this.baseUrl = baseUrl;
   }
 
-  async fetch(): Promise<${returnType}> {
+  async fetch(): Promise<any> {
     try {
       const response = await fetch(this.baseUrl, {
         headers: {
@@ -134,76 +107,66 @@ export class ${className} implements DataFetcher {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
       }
 
-      return await response.json();
+      ${getFetchResponseHandler(config.apiType)}
     } catch (error) {
-      console.error(`Error fetching ${config.name} data:`, error);
+      console.error(\`Error fetching ${config.name} data:\`, error);
       throw error;
     }
   }
-}
-`;
+}`;
+
   await fs.writeFile(path.join(pluginPath, 'fetcher.ts'), content);
 }
 
 async function generateTransformerFile(pluginPath: string, config: PluginConfig): Promise<void> {
   const className = pascalCase(config.name) + 'Transformer';
-  let extractArrayLogic = '';
-  if (config.arrayProperty) {
-    extractArrayLogic = `\n    // Extract array from property\n    let items = data['${config.arrayProperty}'];\n    if (!Array.isArray(items)) {\n      throw new Error('Expected array in property ${config.arrayProperty}');\n    }`;
-  } else {
-    extractArrayLogic = `\n    let items = data;\n    if (!Array.isArray(items)) {\n      throw new Error('Expected top-level array');\n    }`;
-  }
   const content = `import { DataTransformer } from '../../../core/data-sources/types.js';
-import type { FeatureCollection } from 'geojson';
-import type { ${pascalCase(config.name)}Raw } from './types/raw';
+import { GeoJSONFeatureCollection, GeoJSONFeature } from '../../../types/geojson.js';
 
 /**
  * Transformer for ${config.name}
  * Converts ${config.apiType.toUpperCase()} data to GeoJSON format
  */
 export class ${className} implements DataTransformer {
-  transform(data: ${pascalCase(config.name)}Raw): FeatureCollection {
-    try {${extractArrayLogic}
-      const features = items.map(item => this.createFeature(item));
-      return {
-        type: 'FeatureCollection',
-        features
-      };
+  transform(data: any): GeoJSONFeatureCollection {
+    try {
+      ${getTransformLogic(config.apiType, config.arrayProperty)}
     } catch (error) {
-      console.error('Error transforming ${config.name} data:', error);
+      console.error(\`Error transforming ${config.name} data:\`, error);
       throw error;
     }
   }
 
-  private createFeature(item: any): any {
+  private createFeature(item: any): GeoJSONFeature {
     // TODO: Implement feature creation based on your data structure
     return {
       type: 'Feature',
       geometry: {
         type: 'Point',
-        coordinates: [item.longitude || item.lon || item.lng, item.latitude || item.lat]
+        coordinates: [
+          item.longitude || item.lon || item.lng,
+          item.latitude || item.lat
+        ]
       },
-      properties: { id: item.id, name: item.name || item.title, ...item }
+      properties: {
+        id: item.id,
+        name: item.name || item.title,
+        // Add more properties as needed
+        ...item
+      }
     };
   }
-}
-`;
+}`;
 
   await fs.writeFile(path.join(pluginPath, 'transformer.ts'), content);
 }
 
 async function generateValidatorFile(pluginPath: string, config: PluginConfig): Promise<void> {
   const className = pascalCase(config.name) + 'Validator';
-  let typeImport = '';
-  let inputType = 'any';
-  if (config.sampleResponse) {
-    typeImport = `import type { FeatureCollection } from 'geojson';\n`;
-    inputType = 'FeatureCollection';
-  }
-  const content = `${typeImport}import { DataValidator, ValidationResult } from '../../../core/data-sources/types.js';
+  const content = `import { DataValidator, ValidationResult } from '../../../core/data-sources/types.js';
 
 /**
  * Validator for ${config.name}
@@ -218,7 +181,7 @@ export class ${className} implements DataValidator {
     west: -79.64
   };
 
-  validate(data: ${inputType}): ValidationResult {
+  validate(data: any): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -229,18 +192,10 @@ export class ${className} implements DataValidator {
         return { valid: false, errors, warnings };
       }
 
-      // Expect a GeoJSON FeatureCollection
-      if (!data.type || data.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
-        errors.push('Expected GeoJSON FeatureCollection with features array');
-        return { valid: false, errors, warnings };
-      }
-
-      if (data.features.length === 0) {
-        warnings.push('FeatureCollection is empty');
-      }
+      ${getValidationLogic(config.apiType, config.arrayProperty)}
 
       // Validate geographic coordinates if present
-      this.validateGeographicData(data.features, warnings);
+      this.validateGeographicData(data, warnings);
 
       return {
         valid: errors.length === 0,
@@ -248,32 +203,27 @@ export class ${className} implements DataValidator {
         warnings
       };
     } catch (error) {
-      errors.push(`Validation error: ${error}`);
+      errors.push(\`Validation error: \${error}\`);
       return { valid: false, errors, warnings };
     }
   }
 
-  private validateGeographicData(features: any[], warnings: string[]): void {
-    features.forEach((feature, index) => {
-      if (!feature.geometry) {
-        warnings.push(`Feature ${index}: missing geometry`);
-        return;
-      }
-      let lat: number | undefined;
-      let lon: number | undefined;
-      if (feature.geometry.type === 'Point') {
-        lon = feature.geometry.coordinates[0];
-        lat = feature.geometry.coordinates[1];
-      } else if (feature.geometry.type === 'LineString' && feature.geometry.coordinates.length > 0) {
-        lon = feature.geometry.coordinates[0][0];
-        lat = feature.geometry.coordinates[0][1];
-      }
-      if (lat !== undefined && lon !== undefined) {
-        if (!this.isInTorontoBounds(lat, lon)) {
-          warnings.push(`Feature ${index}: coordinates (${lat}, ${lon}) outside Toronto bounds`);
+  private validateGeographicData(data: any, warnings: string[]): void {
+    // TODO: Implement geographic validation based on your data structure
+    // This is a placeholder - adapt to your specific data format
+    
+    if (Array.isArray(data)) {
+      data.forEach((item, index) => {
+        const lat = item.latitude || item.lat;
+        const lon = item.longitude || item.lon || item.lng;
+        
+        if (lat && lon) {
+          if (!this.isInTorontoBounds(lat, lon)) {
+            warnings.push(\`Item \${index}: coordinates (\${lat}, \${lon}) outside Toronto bounds\`);
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   private isInTorontoBounds(lat: number, lon: number): boolean {
@@ -282,8 +232,7 @@ export class ${className} implements DataValidator {
            lon >= this.TORONTO_BOUNDS.west &&
            lon <= this.TORONTO_BOUNDS.east;
   }
-}
-`;
+}`;
 
   await fs.writeFile(path.join(pluginPath, 'validator.ts'), content);
 }
@@ -537,10 +486,25 @@ function getFetchResponseHandler(apiType: string): string {
   }
 }
 
-function getTransformLogic(apiType: string): string {
-  switch (apiType) {
-    case 'json':
-      return `      if (!Array.isArray(data)) {
+function getTransformLogic(apiType: string, arrayProp?: string): string {
+  const arrayExtraction = arrayProp
+    ? `      // Extract nested array if required
+      let items: any = data;
+      if (typeof data === 'object' && !Array.isArray(data)) {
+        items = data['${arrayProp}'];
+      }
+
+      if (!Array.isArray(items)) {
+        throw new Error('Expected array of items inside property "${arrayProp}"');
+      }
+
+      const features = items.map(item => this.createFeature(item));
+
+      return {
+        type: 'FeatureCollection',
+        features
+      };`
+    : `      if (!Array.isArray(data)) {
         throw new Error('Expected array of items');
       }
 
@@ -550,6 +514,10 @@ function getTransformLogic(apiType: string): string {
         type: 'FeatureCollection',
         features
       };`;
+
+  switch (apiType) {
+    case 'json':
+      return arrayExtraction;
     case 'xml':
       return `      // TODO: Parse XML data and convert to array
       // You may want to use xml2js or similar library
@@ -573,20 +541,25 @@ function getTransformLogic(apiType: string): string {
         features
       };`;
     default:
-      return `      // TODO: Implement transformation logic
-      const features = [];
-
-      return {
-        type: 'FeatureCollection',
-        features
-      };`;
+      return arrayExtraction;
   }
 }
 
-function getValidationLogic(apiType: string): string {
-  switch (apiType) {
-    case 'json':
-      return `      if (!Array.isArray(data)) {
+function getValidationLogic(apiType: string, arrayProp?: string): string {
+  const arrayCheck = arrayProp
+    ? `      if (typeof data === 'object' && !Array.isArray(data)) {
+        data = data['${arrayProp}'];
+      }
+
+      if (!Array.isArray(data)) {
+        errors.push('Expected array of items inside property "${arrayProp}"');
+        return { valid: false, errors, warnings };
+      }
+
+      if (data.length === 0) {
+        warnings.push('Data array is empty');
+      }`
+    : `      if (!Array.isArray(data)) {
         errors.push('Expected array of items');
         return { valid: false, errors, warnings };
       }
@@ -594,6 +567,10 @@ function getValidationLogic(apiType: string): string {
       if (data.length === 0) {
         warnings.push('Data array is empty');
       }`;
+
+  switch (apiType) {
+    case 'json':
+      return arrayCheck;
     case 'xml':
       return `      if (typeof data !== 'string') {
         errors.push('Expected XML string');
@@ -619,22 +596,27 @@ function getValidationLogic(apiType: string): string {
   }
 }
 
-function inferRawType(sample: any, name: string): string {
-  // Simple recursive type inference for JSON objects/arrays
-  function infer(obj: any, indent = '  '): string {
-    if (Array.isArray(obj)) {
-      if (obj.length === 0) return 'any[];';
-      return `${infer(obj[0], indent)}[];`;
-    }
-    if (typeof obj === 'object' && obj !== null) {
-      let fields = Object.entries(obj).map(([k, v]) => `${indent}${k}: ${infer(v, indent + '  ')}`);
-      return `{
-${fields.join('\n')}
-${indent.slice(2)}}`;
-    }
-    return typeof obj;
-  }
-  const typeName = `${pascalCase(name)}Raw`;
-  return `// Auto-generated from sample API response\nexport interface ${typeName} ${infer(sample)}\n`;
-} 
+/**
+ * Generates minimal TypeScript helper types inside the plugin directory to encourage strong typing in fetcher, transformer and validator.
+ */
+async function generateTypesFiles(pluginPath: string, _config: PluginConfig): Promise<void> {
+  const typesDir = path.join(pluginPath, 'types');
+  await fs.ensureDir(typesDir);
+
+  // raw.ts – placeholder for developers to fill in
+  const rawContent = `// Auto-generated by CLI – Adjust this interface to match the raw API shape
+export interface RawItem {
+  // TODO: Describe the fields returned by the API
+  // id: string;
+}
+
+export type RawApiResponse = RawItem[] | Record<string, any>;
+`;
+
+  // geojson.ts – re-export global geojson helpers for convenience
+  const geoJsonContent = `export { GeoJSONFeature, GeoJSONFeatureCollection } from '../../../../types/geojson.js';
+`;
+
+  await fs.writeFile(path.join(typesDir, 'raw.ts'), rawContent);
+  await fs.writeFile(path.join(typesDir, 'geojson.ts'), geoJsonContent);
 } 

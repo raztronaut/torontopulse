@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useState } from 'react';
 import Map, { MapRef, Source, Layer, Popup, ViewStateChangeEvent } from 'react-map-gl';
+import type { FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
 import { LayerConfig } from '../types';
 import { DEFAULT_VIEW_STATE } from '../config/layers';
 import { useDataLayer } from '../hooks/useDataLayer';
@@ -31,8 +32,8 @@ interface PopupData {
   properties: any;
 }
 
-// GeoJSON type definition
-type GeoJSONFeatureCollection = {
+// GeoJSON type definition - using standard GeoJSON types for compatibility
+type GeoJSONFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties> | {
   type: 'FeatureCollection';
   features: Array<{
     type: 'Feature';
@@ -60,6 +61,8 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
     enabledLayers.some(l => l.id === 'bike-share'), 60000);
   const beachData = useDataLayer('beach-water-quality', 
     enabledLayers.some(l => l.id === 'beach-water-quality'), 3600000);
+  const beachObservationsData = useDataLayer('toronto-beaches-observations', 
+    enabledLayers.some(l => l.id === 'toronto-beaches-observations'), 86400000);
 
   const onMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -198,6 +201,22 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff'
         };
+      case 'toronto-beaches-observations':
+        return {
+          'circle-radius': 6,
+          'circle-color': [
+            'interpolate',
+            ['linear'],
+            ['get', 'waterTemp'],
+            0, '#3b82f6',    // Cold - blue
+            15, '#10b981',   // Moderate - green
+            25, '#f59e0b',   // Warm - orange
+            30, '#dc2626'    // Hot - red
+          ] as any,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 0.8
+        };
       default:
         return {
           'circle-radius': 5,
@@ -224,6 +243,9 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
           break;
         case 'beach-water-quality':
           geoJSON = beachData.geoJSON;
+          break;
+        case 'toronto-beaches-observations':
+          geoJSON = beachObservationsData.geoJSON;
           break;
       }
 
@@ -408,6 +430,127 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
                 {properties.beach_advisory}
               </span>
             </p>
+          </div>
+        );
+      case 'toronto-beaches-observations':
+        return (
+          <div className="min-w-[300px] max-w-[350px]">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-4 h-4 rounded-full bg-blue-500 flex-shrink-0"></div>
+              <h3 className="font-bold text-white text-xl leading-tight">
+                🏖️ {properties.beachName || 'Beach Observation'}
+              </h3>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <span className="text-gray-400 text-sm font-medium block">Date</span>
+                  <span className="text-white font-semibold">
+                    {(() => {
+                      const date = properties.dataCollectionDate || properties.observationDate;
+                      if (date) {
+                        try {
+                          return new Date(date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          });
+                        } catch {
+                          return date;
+                        }
+                      }
+                      return 'Unknown';
+                    })()}
+                  </span>
+                </div>
+                
+                {properties.waterTemp !== undefined && properties.waterTemp !== null && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Water Temp</span>
+                    <span className="text-blue-300 font-bold text-lg">{properties.waterTemp}°C</span>
+                  </div>
+                )}
+                
+                {properties.airTemp !== undefined && properties.airTemp !== null && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Air Temp</span>
+                    <span className="text-orange-300 font-bold text-lg">{properties.airTemp}°C</span>
+                  </div>
+                )}
+                
+                {properties.waterClarity && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Water Clarity</span>
+                    <span className={`font-semibold capitalize ${
+                      properties.waterClarity.toLowerCase().includes('clear') ? 'text-green-300' :
+                      properties.waterClarity.toLowerCase().includes('cloudy') ? 'text-yellow-300' :
+                      'text-red-300'
+                    }`}>
+                      {properties.waterClarity}
+                    </span>
+                  </div>
+                )}
+                
+                {properties.turbidity !== undefined && properties.turbidity !== null && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Turbidity</span>
+                    <span className="text-white font-semibold">{properties.turbidity} NTU</span>
+                  </div>
+                )}
+                
+                {properties.waveAction && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Wave Action</span>
+                    <span className={`font-semibold capitalize ${
+                      properties.waveAction.toLowerCase() === 'low' || properties.waveAction.toLowerCase() === 'none' ? 'text-green-300' :
+                      properties.waveAction.toLowerCase() === 'medium' ? 'text-yellow-300' :
+                      'text-red-300'
+                    }`}>
+                      {properties.waveAction}
+                    </span>
+                  </div>
+                )}
+                
+                {properties.windDirection && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Wind Direction</span>
+                    <span className="text-white font-semibold">{properties.windDirection}</span>
+                  </div>
+                )}
+                
+                {properties.windSpeed !== undefined && properties.windSpeed !== null && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Wind Speed</span>
+                    <span className="text-cyan-300 font-semibold">{properties.windSpeed} km/h</span>
+                  </div>
+                )}
+                
+                {properties.waterFowl !== undefined && properties.waterFowl !== null && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Water Fowl</span>
+                    <span className="text-white font-semibold">{properties.waterFowl} birds</span>
+                  </div>
+                )}
+                
+                {properties.rain && (
+                  <div>
+                    <span className="text-gray-400 text-sm font-medium block">Rain</span>
+                    <span className={`font-semibold capitalize ${
+                      properties.rain.toLowerCase() === 'no' ? 'text-green-300' : 'text-blue-300'
+                    }`}>
+                      {properties.rain}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="pt-3 border-t border-gray-600">
+                <div className="text-xs text-gray-400 text-center">
+                  Toronto Beach Observation Data
+                </div>
+              </div>
+            </div>
           </div>
         );
       default:

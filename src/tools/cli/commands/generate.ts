@@ -140,6 +140,13 @@ export async function generateDataSource(options: GenerateDataSourceOptions) {
       default: options.type
     },
     {
+      type: 'input',
+      name: 'arrayProperty',
+      message: 'If the data is nested, what is the property name containing the array? (Leave blank if direct array)',
+      default: '',
+      filter: (input: string) => input.trim() || undefined
+    },
+    {
       type: 'number',
       name: 'refreshInterval',
       message: 'Refresh interval (seconds):',
@@ -194,45 +201,6 @@ export async function generateDataSource(options: GenerateDataSourceOptions) {
 
   const answers = await inquirer.prompt(questions as any);
 
-  // After collecting apiUrl and apiType, attempt to fetch a sample response and infer schema
-  let inferredArrayProperty: string | undefined = undefined;
-  let sampleResponse: any = undefined;
-  try {
-    if (answers.apiType === 'json' && answers.apiUrl) {
-      const res = await fetch(answers.apiUrl, { headers: { 'Accept': 'application/json' } });
-      sampleResponse = await res.json();
-      if (Array.isArray(sampleResponse)) {
-        inferredArrayProperty = undefined;
-      } else if (typeof sampleResponse === 'object') {
-        const arrayKey = Object.keys(sampleResponse).find(key => Array.isArray(sampleResponse[key]));
-        if (arrayKey) inferredArrayProperty = arrayKey;
-      }
-    }
-  } catch (err) {
-    console.warn(chalk.yellow('⚠️  Could not fetch sample API response for schema inference.')); 
-  }
-
-  if (inferredArrayProperty === undefined && sampleResponse && typeof sampleResponse === 'object' && !Array.isArray(sampleResponse)) {
-    // Prompt for property name if not inferred
-    const { arrayProperty } = await inquirer.prompt([
-      { type: 'input', name: 'arrayProperty', message: 'If the data is nested, what is the property name containing the array? (Leave blank if direct array)' }
-    ]);
-    inferredArrayProperty = arrayProperty || undefined;
-  }
-
-  if (sampleResponse) {
-    console.log(chalk.cyan('🔎 Sample API response structure:'));
-    if (Array.isArray(sampleResponse)) {
-      console.log(chalk.gray('Top-level array of items.'));
-    } else if (typeof sampleResponse === 'object') {
-      console.log(chalk.gray('Top-level object with keys:'), Object.keys(sampleResponse));
-      if (inferredArrayProperty) {
-        console.log(chalk.gray('Array property inferred:'), inferredArrayProperty);
-      }
-    }
-  }
-
-  // Pass inferredArrayProperty to plugin-generator
   const config: PluginConfig = {
     name: answers.name,
     domain: answers.domain,
@@ -245,8 +213,7 @@ export async function generateDataSource(options: GenerateDataSourceOptions) {
     author: 'Toronto Pulse Team',
     dataLicense: 'Open Government License - Ontario',
     includeTests: answers.includeTests,
-    arrayProperty: inferredArrayProperty,
-    sampleResponse
+    arrayProperty: answers.arrayProperty
   };
 
   const spinner = ora('Generating data source plugin...').start();

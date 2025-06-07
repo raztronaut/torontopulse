@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "id": "toronto-beaches-observations",
+    "name": "Toronto Beaches Observations",
+    "domain": "environment",
+    "version": "1.0.0",
+    "description": "Daily observations made by city staff on Toronto's beaches including temperature, turbidity, wave action, and wildlife counts",
+    "refreshInterval": 86400000,
+    "reliability": "high",
+    "tags": [
+      "environment",
+      "beaches",
+      "water-quality",
+      "toronto",
+      "observations"
+    ],
+    "author": "Toronto Pulse Team",
+    "dataLicense": "Open Government License - Ontario"
+  },
+  "api": {
+    "type": "json",
+    "baseUrl": "/api/toronto-open-data/dataset/toronto-beaches-observations/resource/5731ce39-f871-41e3-a5cf-4742e02fded8/download/toronto-beaches-observations.json",
+    "headers": {
+      "Accept": "application/json",
+      "User-Agent": "TorontoPulse/1.0"
+    },
+    "rateLimit": {
+      "requests": 100,
+      "window": 3600000
+    }
+  },
+  "transform": {
+    "strategy": "ckan-to-geojson",
+    "arrayProperty": "result.records",
+    "mappings": {
+      "latitude": "$.latitude",
+      "longitude": "$.longitude", 
+      "id": "$._id",
+      "beachName": "$.beachName",
+      "observationDate": "$.observationDate",
+      "waterTemp": "$.waterTemp",
+      "turbidity": "$.turbidity",
+      "waveAction": "$.waveAction",
+      "windDirection": "$.windDirection",
+      "windSpeed": "$.windSpeed"
+    }
+  },
+  "visualization": {
+    "layer": {
+      "type": "circle",
+      "paint": {
+        "circle-radius": 8,
+        "circle-color": [
+          "case",
+          ["==", ["get", "turbidity"], "Clear"], "#22c55e",
+          ["==", ["get", "turbidity"], "Cloudy"], "#f59e0b", 
+          ["==", ["get", "turbidity"], "Murky"], "#ef4444",
+          "#6b7280"
+        ],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff"
+      }
+    },
+    "popup": {
+      "template": "toronto-beaches-observations-popup"
+    }
+  },
+  "cache": {
+    "enabled": true,
+    "ttl": 3600000
+  },
+  "monitoring": {
+    "enabled": true,
+    "alertThresholds": {
+      "errorRate": 0.05,
+      "responseTime": 5000
+    }
+  }
+}

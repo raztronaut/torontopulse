@@ -104,53 +104,43 @@ export async function verifyIntegration(options: VerifyOptions) {
       });
     }
 
-    // 5. Test plugin connectivity
-    console.log(chalk.blue('🌐 Testing plugin connectivity...'));
-    for (const plugin of plugins) {
+    // 5. Test plugin connectivity & data flow
+    console.log(chalk.blue('🌐 Testing plugin connectivity & data flow...'));
+
+    const pluginsToTest = options.plugin ? plugins.filter(p => p.metadata.id === options.plugin) : plugins;
+
+    for (const plugin of pluginsToTest) {
+      const start = Date.now();
       try {
-        console.log(`   Testing ${plugin.metadata.name}...`);
-        // This is a basic connectivity test - you might want to expand this
-        successes.push(`✅ Plugin "${plugin.metadata.id}" connectivity verified`);
+        process.stdout.write(`   ${plugin.metadata.id}: fetching...`);
+        const rawData = await plugin.fetcher.fetch();
+        const fetchedMs = Date.now() - start;
+        process.stdout.write(chalk.green(' fetched '));
+
+        // Transform
+        const geoJson = plugin.transformer.transform(rawData);
+        const transformMs = Date.now() - start - fetchedMs;
+        process.stdout.write(chalk.green('transformed '));
+
+        // Validate
+        const validation = plugin.validator.validate(geoJson);
+        const validateMs = Date.now() - start - fetchedMs - transformMs;
+
+        if (!validation.valid) {
+          issues.push(`❌ Plugin "${plugin.metadata.id}" validation failed: ${validation.errors.join(', ')}`);
+          console.log(chalk.red(` validation failed (${validateMs} ms)`));
+          continue;
+        }
+
+        successes.push(`✅ Plugin "${plugin.metadata.id}" connectivity & data flow verified (fetch: ${fetchedMs}ms, transform: ${transformMs}ms)`);
+        console.log(chalk.green(` ok (${Date.now() - start} ms)`));
       } catch (error) {
-        issues.push(`❌ Plugin "${plugin.metadata.id}" connectivity failed: ${error}`);
+        issues.push(`❌ Plugin "${plugin.metadata.id}" data flow failed: ${error}`);
+        console.log(chalk.red(' failed'));
       }
     }
 
-    // 6. Automated Data Flow Checks
-    console.log(chalk.blue('🔬 Automated Data Flow Checks...'));
-    for (const plugin of plugins) {
-      try {
-        // Fetch raw data
-        const raw = await plugin.fetcher.fetch();
-        let rawType = typeof raw;
-        if (raw && Array.isArray(raw)) rawType = 'array';
-        if (raw && typeof raw === 'object' && !Array.isArray(raw)) rawType = 'object';
-        // Transform to GeoJSON
-        const geojson = await plugin.transformer.transform(raw);
-        // Validate GeoJSON
-        const validation = plugin.validator.validate(geojson);
-        // Type checks
-        let geojsonValid = geojson && geojson.type === 'FeatureCollection' && Array.isArray(geojson.features);
-        let validationValid = typeof validation === 'object' && typeof validation.valid === 'boolean' && Array.isArray(validation.errors);
-        // Print results
-        if (!geojsonValid) {
-          issues.push(`❌ [${plugin.metadata.id}] Transformer output is not valid GeoJSON FeatureCollection`);
-        }
-        if (!validationValid) {
-          issues.push(`❌ [${plugin.metadata.id}] Validator output is not a valid ValidationResult`);
-        }
-        if (validationValid && !validation.valid) {
-          warnings.push(`[${plugin.metadata.id}] Validation failed: ${validation.errors.join(', ')}`);
-        }
-        if (geojsonValid && validationValid && validation.valid) {
-          successes.push(`✅ [${plugin.metadata.id}] Data flow: fetch → transform → validate passed`);
-        }
-      } catch (err) {
-        issues.push(`❌ [${plugin.metadata.id}] Data flow error: ${err}`);
-      }
-    }
-
-    // 7. Display results
+    // 6. Display results
     console.log(chalk.blue('\n📊 Verification Results:'));
     console.log(chalk.green(`✅ Successes: ${successes.length}`));
     console.log(chalk.yellow(`⚠️  Warnings: ${warnings.length}`));
