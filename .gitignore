@@ -162,4 +162,76 @@ typings/
 .tern-port
 
 # Stores VSCode versions used for testing VSCode extensions
-.vscode-test 
+.vscode-test
+
+# Documentation files (auto-generated and development notes)
+*.md
+*.mdx
+!README.md
+
+# AI and development artifacts
+ai.png
+assets/ai.png
+AI_*.md
+*-Summary.md
+*-Implementation*.md
+*-Documentation.md
+Phase*.md
+MigrationPlan.mdx
+IdealArchitecture.mdx
+cli-tool-*.mdx
+
+# API keys and sensitive configuration
+.env.example
+.anthropic
+.openai
+
+# Development and testing artifacts
+.test-results/
+test-results/
+playwright-report/
+coverage/
+.coverage/
+
+# Build artifacts and cache
+.turbo/
+.swc/
+.tsbuildinfo
+*.tsbuildinfo
+
+# Package manager files
+.pnpm-store/
+.yarn/
+yarn.lock
+pnpm-lock.yaml
+
+# IDE and editor files
+*.sublime-*
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.iml
+
+# Backup and temporary files
+*.backup
+*.bak
+*.tmp
+*.temp
+*~
+.#*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.cert
+
+# Local development overrides
+docker-compose.override.yml
+.env.override 
