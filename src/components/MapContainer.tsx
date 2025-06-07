@@ -446,16 +446,31 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
                   <span className="text-gray-400 text-sm font-medium block">Date</span>
-                  <span className="text-white font-semibold">
+                  <span className={`font-semibold ${(() => {
+                    const date = properties.dataCollectionDate || properties.observationDate || properties.sampleDate || properties.date;
+                    if (date) {
+                      try {
+                        const observationDate = new Date(date);
+                        const daysDiff = Math.floor((Date.now() - observationDate.getTime()) / (1000 * 60 * 60 * 24));
+                        return daysDiff > 7 ? 'text-yellow-300' : 'text-white';
+                      } catch {
+                        return 'text-gray-300';
+                      }
+                    }
+                    return 'text-gray-300';
+                  })()}`}>
                     {(() => {
-                      const date = properties.dataCollectionDate || properties.observationDate;
+                      const date = properties.dataCollectionDate || properties.observationDate || properties.sampleDate || properties.date;
                       if (date) {
                         try {
-                          return new Date(date).toLocaleDateString('en-US', {
+                          const observationDate = new Date(date);
+                          const daysDiff = Math.floor((Date.now() - observationDate.getTime()) / (1000 * 60 * 60 * 24));
+                          const formattedDate = observationDate.toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric'
                           });
+                          return daysDiff > 0 ? `${formattedDate} (${daysDiff}d ago)` : formattedDate;
                         } catch {
                           return date;
                         }
@@ -479,23 +494,18 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
                   </div>
                 )}
                 
-                {properties.waterClarity && (
+                {(properties.waterClarity || properties.turbidity) && (
                   <div>
                     <span className="text-gray-400 text-sm font-medium block">Water Clarity</span>
                     <span className={`font-semibold capitalize ${
-                      properties.waterClarity.toLowerCase().includes('clear') ? 'text-green-300' :
-                      properties.waterClarity.toLowerCase().includes('cloudy') ? 'text-yellow-300' :
+                      (properties.waterClarity && properties.waterClarity.toLowerCase().includes('clear')) || 
+                      (properties.turbidity && properties.turbidity.toLowerCase().includes('clear')) ? 'text-green-300' :
+                      (properties.waterClarity && properties.waterClarity.toLowerCase().includes('cloudy')) ||
+                      (properties.turbidity && properties.turbidity.toLowerCase().includes('cloudy')) ? 'text-yellow-300' :
                       'text-red-300'
                     }`}>
-                      {properties.waterClarity}
+                      {properties.waterClarity || properties.turbidity}
                     </span>
-                  </div>
-                )}
-                
-                {properties.turbidity !== undefined && properties.turbidity !== null && (
-                  <div>
-                    <span className="text-gray-400 text-sm font-medium block">Turbidity</span>
-                    <span className="text-white font-semibold">{properties.turbidity} NTU</span>
                   </div>
                 )}
                 
@@ -533,13 +543,14 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
                   </div>
                 )}
                 
-                {properties.rain && (
+                {(properties.rain || properties.rainfall) && (
                   <div>
                     <span className="text-gray-400 text-sm font-medium block">Rain</span>
                     <span className={`font-semibold capitalize ${
-                      properties.rain.toLowerCase() === 'no' ? 'text-green-300' : 'text-blue-300'
+                      (properties.rain && properties.rain.toLowerCase() === 'no') || 
+                      (properties.rainfall && properties.rainfall.toLowerCase() === 'no') ? 'text-green-300' : 'text-blue-300'
                     }`}>
-                      {properties.rain}
+                      {properties.rain || properties.rainfall}
                     </span>
                   </div>
                 )}
@@ -548,6 +559,21 @@ export function MapContainer({ enabledLayers, onLayerClick }: MapContainerProps)
               <div className="pt-3 border-t border-gray-600">
                 <div className="text-xs text-gray-400 text-center">
                   Toronto Beach Observation Data
+                  {(() => {
+                    const date = properties.dataCollectionDate || properties.observationDate || properties.sampleDate || properties.date;
+                    if (date) {
+                      try {
+                        const observationDate = new Date(date);
+                        const daysDiff = Math.floor((Date.now() - observationDate.getTime()) / (1000 * 60 * 60 * 24));
+                        if (daysDiff > 7) {
+                          return <div className="text-yellow-400 text-xs mt-1">⚠️ Data is {daysDiff} days old</div>;
+                        }
+                      } catch {
+                        // Ignore date parsing errors
+                      }
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>

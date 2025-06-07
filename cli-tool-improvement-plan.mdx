@@ -1,158 +1,634 @@
-# CLI Tool Improvement Plan
+# CLI Tool Improvement Plan: Seamless Toronto Open Data Integration
 
-## 📝 Background & Rationale
+## Vision
+Transform the current CLI tool to enable one-command integration of Toronto Open Data datasets with full automation from discovery to map visualization.
 
-During the integration of the Road Restrictions plugin, several issues surfaced that required manual debugging and code refactoring:
+**Target Experience:**
+```bash
+npm run tp generate:datasource --url="https://open.toronto.ca/dataset/any-dataset/" --auto-integrate
+```
 
-- The transformer and validator expected different data structures, causing validation errors.
-- The plugin system validated raw API data instead of the transformed GeoJSON, leading to schema mismatches.
-- Manual updates were needed for plugin registration and layer mapping.
-- Console log checks and UI verification were required to catch integration issues.
+## Current Pain Points Analysis
 
-**These issues highlighted the need for more robust automation, type safety, and integration checks in the CLI tool.**
+### 1. **API Discovery & Configuration Issues**
+- Manual resource ID hunting through CKAN API
+- Incorrect endpoint assumptions (datastore vs direct download)
+- No automatic API structure detection
+- CORS configuration requires manual Vite proxy setup
 
----
+### 2. **Integration Complexity**
+- 5+ files require manual updates for each new dataset
+- No automatic layer configuration
+- Manual popup template creation
+- No automatic styling based on data types
 
-## 🚦 Improvement Plan (with Implementation Details)
+### 3. **Data Transformation Challenges**
+- Manual coordinate mapping for location-based data
+- No automatic geographic data detection
+- Limited transformer templates
+- No data type inference
 
-### 1. Automated Data Flow Checks
-- **What:** Auto-generate tests that verify the plugin's fetch → transform → validate sequence, ensuring type compatibility at each stage.
-- **Why:** Prevents mismatches like the validator expecting a raw array while the transformer outputs GeoJSON.
-- **How:**
-  - Add a CLI command:
-    ```bash
-    npm run tp verify:integration --all
-    ```
-  - This command should:
-    1. Load each plugin.
-    2. Run `fetcher.fetch()`, `transformer.transform()`, and `validator.validate()` in sequence.
-    3. Assert that the output of each step matches the expected TypeScript type.
-    4. Report mismatches and suggest fixes.
-- **Sample Code:**
-    ```typescript
-    // src/tools/cli/commands/verify.ts
-    for (const plugin of allPlugins) {
-      const raw = await plugin.fetcher.fetch();
-      const geojson = plugin.transformer.transform(raw);
-      const validation = plugin.validator.validate(geojson);
-      if (!validation.valid) {
-        console.warn(`[${plugin.metadata.id}] Validation failed:`, validation.errors);
-      }
-      // Type assertions (using zod or tsd)
-    }
-    ```
+### 4. **Styling & UX Gaps**
+- Basic popup templates with poor styling
+- No automatic color coding based on data values
+- Manual paint property configuration
+- No responsive design considerations
 
-### 2. Schema Inference & Validation
-- **What:** Prompt for the expected API response structure during plugin generation and scaffold the transformer/validator accordingly.
-- **Why:** Avoids manual property extraction bugs (e.g., needing to extract `Closure` from the API response).
-- **How:**
-  - During `generate:datasource`, ask:
-    - "Is the data an array, or an object with a property containing the array?"
-    - "What is the property name (if any)?"
-  - Use this info to scaffold the transformer:
-    ```typescript
-    // Example transformer template
-    let items = data;
-    if (typeof data === 'object' && !Array.isArray(data)) {
-      items = data['<propertyName>'];
-    }
-    ```
-  - Scaffold the validator to expect the same structure.
-- **Sample Prompt:**
-    ```typescript
-    const { arrayProperty } = await inquirer.prompt([
-      { type: 'input', name: 'arrayProperty', message: 'If the data is nested, what is the property name containing the array? (Leave blank if direct array)' }
+## Comprehensive Improvement Plan
+
+### Phase 1: Enhanced API Discovery & Configuration
+
+#### 1.1 CKAN API Intelligence
+```typescript
+// New: src/tools/cli/services/CkanApiService.ts
+class CkanApiService {
+  async discoverDataset(url: string): Promise<DatasetMetadata> {
+    // Parse Toronto Open Data URL to extract dataset ID
+    // Query CKAN API for package metadata
+    // Identify best resource (JSON > CSV > others)
+    // Detect data structure and types
+    // Return comprehensive metadata
+  }
+  
+  async validateResourceAccess(resourceId: string): Promise<AccessInfo> {
+    // Test direct download vs datastore API
+    // Detect CORS requirements
+    // Validate data format and structure
+    // Return access strategy
+  }
+}
+```
+
+#### 1.2 Automatic Proxy Configuration
+```typescript
+// New: src/tools/cli/services/ProxyConfigService.ts
+class ProxyConfigService {
+  async configureProxy(domain: string): Promise<void> {
+    // Read existing vite.config.ts
+    // Add/update proxy configuration
+    // Handle multiple Toronto Open Data endpoints
+    // Preserve existing proxy settings
+  }
+}
+```
+
+#### 1.3 Enhanced Dataset Metadata Detection
+```typescript
+interface DatasetMetadata {
+  id: string;
+  name: string;
+  description: string;
+  resourceId: string;
+  accessUrl: string;
+  dataType: 'geospatial' | 'temporal' | 'categorical' | 'mixed';
+  geoFields: string[];
+  timeFields: string[];
+  valueFields: FieldMetadata[];
+  updateFrequency: string;
+  corsRequired: boolean;
+}
+```
+
+### Phase 2: Intelligent Data Transformation
+
+#### 2.1 Geographic Data Detection & Mapping
+```typescript
+// Enhanced: src/tools/cli/services/GeoMappingService.ts
+class GeoMappingService {
+  async detectGeographicData(sample: any[]): Promise<GeoStrategy> {
+    // Detect coordinate fields (lat/lng, x/y)
+    // Identify address fields for geocoding
+    // Recognize Toronto-specific location names
+    // Return transformation strategy
+  }
+  
+  async generateCoordinateMapping(locationField: string): Promise<CoordinateMap> {
+    // Built-in Toronto location database
+    // Geocoding service integration
+    // Manual coordinate overrides
+    // Validation and fallbacks
+  }
+}
+```
+
+#### 2.2 Smart Transformer Generation
+```typescript
+// Enhanced: src/tools/cli/generators/TransformerGenerator.ts
+class TransformerGenerator {
+  generateTransformer(metadata: DatasetMetadata): string {
+    // Auto-detect transformation needs
+    // Generate coordinate mapping logic
+    // Handle temporal data formatting
+    // Create GeoJSON structure
+    // Add data validation
+  }
+}
+```
+
+#### 2.3 Built-in Toronto Location Database
+```typescript
+// New: src/tools/cli/data/TorontoLocations.ts
+export const TORONTO_LOCATIONS = {
+  beaches: {
+    'Centre Island Beach': [-79.378, 43.620],
+    'Cherry Beach': [-79.340, 43.640],
+    'Woodbine Beach': [-79.309, 43.663],
+    // ... comprehensive location database
+  },
+  neighborhoods: { /* ... */ },
+  landmarks: { /* ... */ },
+  intersections: { /* ... */ }
+};
+```
+
+### Phase 3: Automatic Integration & Configuration
+
+#### 3.1 Multi-File Integration Service
+```typescript
+// New: src/tools/cli/services/IntegrationService.ts
+class IntegrationService {
+  async integrateDataSource(config: DataSourceConfig): Promise<void> {
+    await Promise.all([
+      this.updateLoader(config),
+      this.updateLayerConfig(config),
+      this.updateMapContainer(config),
+      this.updateDataLayerHook(config),
+      this.generateTypes(config)
     ]);
-    ```
+  }
+  
+  private async updateLoader(config: DataSourceConfig): Promise<void> {
+    // Parse existing loader.ts
+    // Add new plugin to knownPlugins array
+    // Maintain alphabetical order
+    // Preserve existing imports and structure
+  }
+  
+  private async updateLayerConfig(config: DataSourceConfig): Promise<void> {
+    // Generate layer configuration based on data type
+    // Auto-configure refresh intervals
+    // Set appropriate zoom levels
+    // Add metadata and descriptions
+  }
+  
+  private async updateMapContainer(config: DataSourceConfig): Promise<void> {
+    // Add data hook with appropriate refresh interval
+    // Generate paint configuration based on data types
+    // Add layer to renderLayers switch
+    // Generate popup template
+  }
+}
+```
 
-### 3. TypeScript Type Enforcement
-- **What:** Generate and enforce TypeScript types for both raw API responses and transformed data.
-- **Why:** Ensures that transformer and validator interfaces are always compatible, catching issues at compile time.
-- **How:**
-  - During plugin generation, create:
-    - `types/raw.ts` for the API response
-    - `types/geojson.ts` for the transformed data
-  - Use these types in fetcher, transformer, and validator signatures.
-  - Add a CLI check (using `tsd` or similar) to ensure type compatibility.
-- **Sample Type Generation:**
-    ```typescript
-    // src/domains/infrastructure/road-restrictions/types/raw.ts
-    export interface RoadRestrictionRaw {
-      id: string;
-      latitude: number;
-      longitude: number;
-      // ...other fields
+#### 3.2 Intelligent Layer Configuration
+```typescript
+// Enhanced: src/tools/cli/generators/LayerConfigGenerator.ts
+class LayerConfigGenerator {
+  generateLayerConfig(metadata: DatasetMetadata): LayerConfig {
+    return {
+      id: metadata.id,
+      name: metadata.name,
+      description: metadata.description,
+      enabled: true,
+      refreshInterval: this.calculateRefreshInterval(metadata.updateFrequency),
+      paint: this.generatePaintConfig(metadata),
+      popup: this.generatePopupConfig(metadata),
+      zoom: this.calculateOptimalZoom(metadata.geoFields)
+    };
+  }
+  
+  private generatePaintConfig(metadata: DatasetMetadata): PaintConfig {
+    // Temperature data: blue to red gradient
+    // Categorical data: distinct colors
+    // Temporal data: opacity/size based on recency
+    // Numeric data: color intensity mapping
+  }
+}
+```
+
+### Phase 4: Advanced Styling & UX Automation
+
+#### 4.1 Intelligent Popup Generation
+```typescript
+// New: src/tools/cli/generators/PopupGenerator.ts
+class PopupGenerator {
+  generatePopupTemplate(metadata: DatasetMetadata): string {
+    const template = this.createBaseTemplate(metadata);
+    
+    // Add field-specific formatting
+    metadata.valueFields.forEach(field => {
+      template.addField(this.formatField(field));
+    });
+    
+    // Add conditional styling
+    template.addConditionalStyling(this.generateConditionalStyles(metadata));
+    
+    // Add responsive design
+    template.addResponsiveClasses();
+    
+    return template.render();
+  }
+  
+  private formatField(field: FieldMetadata): FieldTemplate {
+    switch (field.type) {
+      case 'temperature':
+        return new TemperatureField(field);
+      case 'date':
+        return new DateField(field);
+      case 'categorical':
+        return new CategoricalField(field);
+      case 'numeric':
+        return new NumericField(field);
+      default:
+        return new TextField(field);
     }
-    ```
+  }
+}
+```
 
-### 4. Integration Verification Command
-- **What:** Enhance `verify:integration` to simulate a full data flow for each plugin and check for mismatches.
-- **Why:** Catches issues before manual testing, such as the validator receiving the wrong data structure.
-- **How:**
-  - Run fetch, transform, and validate for each plugin.
-  - Check that the output of each step matches the expected type.
-  - Report and optionally auto-fix common issues (e.g., wrong property extraction).
-- **Sample CLI Output:**
-    ```
-    🔍 Verifying plugin: road-restrictions
-    ✅ Fetch: API returned object with property 'Closure'
-    ✅ Transform: Output is valid GeoJSON FeatureCollection
-    ✅ Validate: Passed
-    ```
+#### 4.2 Automatic Color Coding System
+```typescript
+// New: src/tools/cli/services/ColorCodingService.ts
+class ColorCodingService {
+  generateColorScheme(field: FieldMetadata): ColorScheme {
+    switch (field.semanticType) {
+      case 'temperature':
+        return new TemperatureColorScheme(); // blue -> green -> orange -> red
+      case 'quality':
+        return new QualityColorScheme(); // green -> yellow -> red
+      case 'quantity':
+        return new QuantityColorScheme(); // light -> dark intensity
+      case 'status':
+        return new StatusColorScheme(); // green/red binary
+      default:
+        return new DefaultColorScheme();
+    }
+  }
+}
+```
 
-### 5. Legacy Detection & Migration Guidance
-- **What:** Warn if a new plugin is mapped in `useDataLayer.ts` but not registered in the loader, or vice versa.
-- **Why:** Prevents silent failures where a plugin is not actually used by the UI.
-- **How:**
-  - CLI scans both `useDataLayer.ts` and `loader.ts`.
-  - Reports any mismatches.
-  - Suggests migration steps if legacy code is detected.
-- **Sample Check:**
-    ```typescript
-    const mappedLayers = extractLayerMappings('src/hooks/useDataLayer.ts');
-    const registeredPlugins = extractPluginRegistrations('src/core/data-sources/loader.ts');
-    for (const layer of mappedLayers) {
-      if (!registeredPlugins.includes(layer.pluginId)) {
-        console.warn(`Layer ${layer.id} is mapped but plugin ${layer.pluginId} is not registered!`);
+#### 4.3 Responsive Design Templates
+```typescript
+// New: src/tools/cli/templates/PopupTemplates.ts
+export const POPUP_TEMPLATES = {
+  environmental: {
+    layout: 'grid',
+    columns: 2,
+    spacing: 'compact',
+    colorCoding: true,
+    units: true,
+    dateFormatting: 'relative'
+  },
+  transportation: {
+    layout: 'list',
+    realTime: true,
+    statusIndicators: true,
+    routing: true
+  },
+  infrastructure: {
+    layout: 'card',
+    images: true,
+    details: 'expandable',
+    actions: true
+  }
+};
+```
+
+### Phase 5: Data Type Intelligence & Semantic Understanding
+
+#### 5.1 Field Type Detection
+```typescript
+// New: src/tools/cli/services/FieldAnalysisService.ts
+class FieldAnalysisService {
+  analyzeFields(sampleData: any[]): FieldMetadata[] {
+    return Object.keys(sampleData[0]).map(fieldName => {
+      const values = sampleData.map(row => row[fieldName]);
+      
+      return {
+        name: fieldName,
+        type: this.detectDataType(values),
+        semanticType: this.detectSemanticType(fieldName, values),
+        format: this.detectFormat(values),
+        range: this.calculateRange(values),
+        nullable: this.checkNullable(values),
+        units: this.detectUnits(fieldName, values)
+      };
+    });
+  }
+  
+  private detectSemanticType(fieldName: string, values: any[]): SemanticType {
+    // Temperature patterns
+    if (/temp|temperature/i.test(fieldName)) return 'temperature';
+    
+    // Date patterns
+    if (/date|time|timestamp/i.test(fieldName)) return 'date';
+    
+    // Location patterns
+    if (/lat|lng|longitude|latitude|address|location/i.test(fieldName)) return 'location';
+    
+    // Quality indicators
+    if (/quality|clarity|condition|status/i.test(fieldName)) return 'quality';
+    
+    // Quantity patterns
+    if (/count|number|amount|speed|distance/i.test(fieldName)) return 'quantity';
+    
+    return 'generic';
+  }
+}
+```
+
+#### 5.2 Toronto-Specific Data Recognition
+```typescript
+// New: src/tools/cli/services/TorontoDataService.ts
+class TorontoDataService {
+  recognizeTorontoPatterns(metadata: DatasetMetadata): TorontoPatterns {
+    return {
+      beaches: this.detectBeachData(metadata),
+      ttc: this.detectTTCData(metadata),
+      neighborhoods: this.detectNeighborhoodData(metadata),
+      infrastructure: this.detectInfrastructureData(metadata),
+      events: this.detectEventData(metadata)
+    };
+  }
+  
+  private detectBeachData(metadata: DatasetMetadata): BeachPattern | null {
+    const beachIndicators = ['beach', 'water', 'temperature', 'clarity', 'wave'];
+    const hasBeachFields = metadata.valueFields.some(field => 
+      beachIndicators.some(indicator => 
+        field.name.toLowerCase().includes(indicator)
+      )
+    );
+    
+    if (hasBeachFields) {
+      return {
+        type: 'beach-observations',
+        temperatureFields: this.findTemperatureFields(metadata),
+        qualityFields: this.findQualityFields(metadata),
+        locationField: this.findLocationField(metadata)
+      };
+    }
+    
+    return null;
+  }
+}
+```
+
+### Phase 6: Testing & Validation Automation
+
+#### 6.1 Automated Testing Pipeline
+```typescript
+// New: src/tools/cli/services/ValidationService.ts
+class ValidationService {
+  async validateIntegration(config: DataSourceConfig): Promise<ValidationResult> {
+    const results = await Promise.all([
+      this.testApiAccess(config),
+      this.validateDataStructure(config),
+      this.testTransformation(config),
+      this.validateMapIntegration(config),
+      this.testPopupRendering(config)
+    ]);
+    
+    return this.aggregateResults(results);
+  }
+  
+  private async testApiAccess(config: DataSourceConfig): Promise<TestResult> {
+    try {
+      const response = await fetch(config.apiUrl);
+      const data = await response.json();
+      
+      return {
+        test: 'API Access',
+        status: 'pass',
+        message: `Successfully fetched ${data.length || 'unknown'} records`
+      };
+    } catch (error) {
+      return {
+        test: 'API Access',
+        status: 'fail',
+        message: `Failed to access API: ${error.message}`,
+        suggestion: 'Check CORS configuration or API endpoint'
+      };
+    }
+  }
+}
+```
+
+#### 6.2 Preview Mode
+```typescript
+// New: src/tools/cli/commands/PreviewCommand.ts
+export class PreviewCommand {
+  async execute(options: PreviewOptions): Promise<void> {
+    // Generate temporary plugin
+    // Start development server
+    // Open browser to preview
+    // Show data statistics
+    // Allow interactive testing
+    // Clean up temporary files
+  }
+}
+```
+
+### Phase 7: Enhanced CLI Interface
+
+#### 7.1 Interactive Mode
+```typescript
+// Enhanced: src/tools/cli/commands/GenerateDataSourceCommand.ts
+export class GenerateDataSourceCommand {
+  async executeInteractive(): Promise<void> {
+    const url = await this.promptForUrl();
+    const metadata = await this.discoverDataset(url);
+    
+    console.log(`📊 Discovered dataset: ${metadata.name}`);
+    console.log(`📍 Data type: ${metadata.dataType}`);
+    console.log(`🔄 Update frequency: ${metadata.updateFrequency}`);
+    
+    const options = await this.promptForOptions(metadata);
+    const config = await this.generateConfig(metadata, options);
+    
+    if (await this.confirmGeneration(config)) {
+      await this.executeGeneration(config);
+      await this.runValidation(config);
+      
+      if (options.autoIntegrate) {
+        await this.integrateIntoApp(config);
+        console.log('✅ Dataset fully integrated and ready to use!');
       }
     }
-    ```
+  }
+  
+  private async promptForOptions(metadata: DatasetMetadata): Promise<GenerationOptions> {
+    return {
+      autoIntegrate: await confirm('Auto-integrate into map?'),
+      generatePopup: await confirm('Generate popup template?'),
+      enableCaching: await confirm('Enable data caching?'),
+      refreshInterval: await select('Refresh interval:', [
+        { value: 3600000, label: '1 hour' },
+        { value: 86400000, label: '24 hours' },
+        { value: 604800000, label: '1 week' }
+      ])
+    };
+  }
+}
+```
 
-### 6. Developer Feedback & Documentation
-- **What:** Output clear next steps after plugin generation, including test and verification commands.
-- **Why:** Guides developers to catch integration issues early and follow best practices.
-- **How:**
-  - After generating a plugin, print:
-    ```
-    ✅ Plugin generated!
-    👉 Next steps:
-       1. Test: npm run tp test:datasource <plugin-id> --validate
-       2. Verify: npm run tp verify:integration --plugin=<plugin-id>
-       3. Enable the layer in the UI and check the map
-    ```
-  - Add troubleshooting tips for common issues.
+#### 7.2 Progress Tracking & Feedback
+```typescript
+// New: src/tools/cli/utils/ProgressTracker.ts
+export class ProgressTracker {
+  private steps: ProgressStep[] = [];
+  
+  addStep(name: string, description: string): void {
+    this.steps.push({ name, description, status: 'pending' });
+  }
+  
+  startStep(name: string): void {
+    const step = this.steps.find(s => s.name === name);
+    if (step) {
+      step.status = 'running';
+      this.render();
+    }
+  }
+  
+  completeStep(name: string, message?: string): void {
+    const step = this.steps.find(s => s.name === name);
+    if (step) {
+      step.status = 'completed';
+      step.message = message;
+      this.render();
+    }
+  }
+  
+  private render(): void {
+    // Clear console and re-render progress
+    console.clear();
+    console.log('🚀 Toronto Pulse Data Integration\n');
+    
+    this.steps.forEach(step => {
+      const icon = step.status === 'completed' ? '✅' : 
+                   step.status === 'running' ? '⏳' : '⏸️';
+      console.log(`${icon} ${step.description}`);
+      if (step.message) {
+        console.log(`   ${step.message}`);
+      }
+    });
+  }
+}
+```
 
----
+### Phase 8: Error Handling & Recovery
 
-## 📋 Summary Table
+#### 8.1 Comprehensive Error Handling
+```typescript
+// New: src/tools/cli/services/ErrorHandlingService.ts
+class ErrorHandlingService {
+  async handleError(error: IntegrationError): Promise<RecoveryAction> {
+    switch (error.type) {
+      case 'CORS_ERROR':
+        return {
+          action: 'configure_proxy',
+          message: 'CORS error detected. Configuring Vite proxy...',
+          autoFix: true
+        };
+        
+      case 'INVALID_RESOURCE_ID':
+        return {
+          action: 'discover_resources',
+          message: 'Invalid resource ID. Discovering available resources...',
+          autoFix: true
+        };
+        
+      case 'TRANSFORMATION_ERROR':
+        return {
+          action: 'regenerate_transformer',
+          message: 'Data transformation failed. Analyzing data structure...',
+          autoFix: false,
+          requiresInput: true
+        };
+        
+      default:
+        return {
+          action: 'manual_intervention',
+          message: `Unexpected error: ${error.message}`,
+          autoFix: false
+        };
+    }
+  }
+}
+```
 
-| Improvement                | Problem Addressed                                 | Solution Mechanism                |
-|----------------------------|---------------------------------------------------|-----------------------------------|
-| Automated Data Flow Checks | Validator/transformer type mismatches             | Auto-generated integration tests  |
-| Schema Inference           | Manual property extraction bugs                   | Prompt & scaffold correct logic   |
-| TypeScript Enforcement     | Interface/type incompatibility                    | Generated types & compile checks  |
-| Integration Verification   | Manual/late discovery of integration issues       | Enhanced CLI verification         |
-| Legacy Detection           | Plugins not registered or mapped                  | Cross-check & migration hints     |
-| Feedback & Docs            | Unclear next steps for developers                 | CLI output & troubleshooting tips |
+#### 8.2 Rollback Capabilities
+```typescript
+// New: src/tools/cli/services/RollbackService.ts
+class RollbackService {
+  private backups: Map<string, FileBackup[]> = new Map();
+  
+  async createBackup(operation: string): Promise<string> {
+    const backupId = `${operation}_${Date.now()}`;
+    const filesToBackup = this.getAffectedFiles(operation);
+    
+    const backups = await Promise.all(
+      filesToBackup.map(async file => ({
+        path: file,
+        content: await fs.readFile(file, 'utf-8'),
+        timestamp: Date.now()
+      }))
+    );
+    
+    this.backups.set(backupId, backups);
+    return backupId;
+  }
+  
+  async rollback(backupId: string): Promise<void> {
+    const backups = this.backups.get(backupId);
+    if (!backups) throw new Error(`Backup ${backupId} not found`);
+    
+    await Promise.all(
+      backups.map(backup => 
+        fs.writeFile(backup.path, backup.content)
+      )
+    );
+    
+    console.log(`✅ Rolled back to backup ${backupId}`);
+  }
+}
+```
 
----
+## Implementation Priority
 
-## 🧭 Why These Changes?
+### Phase 1 (Immediate): Core Automation
+1. CKAN API discovery service
+2. Automatic proxy configuration
+3. Basic multi-file integration
 
-Based on our recent experience, these improvements will:
-- **Reduce manual debugging** by surfacing integration issues earlier.
-- **Prevent type and data flow mismatches** by enforcing contracts at generation and test time.
-- **Streamline onboarding and migration** for new plugins and developers.
-- **Increase confidence** that new data sources will work out-of-the-box, with less risk of silent failures or UI issues.
+### Phase 2 (Short-term): Intelligence
+1. Data type detection
+2. Geographic mapping service
+3. Smart transformer generation
 
-By embedding these checks and workflows into the CLI, we ensure that future plugin integrations are robust, maintainable, and developer-friendly. 
+### Phase 3 (Medium-term): UX Enhancement
+1. Popup generation system
+2. Color coding automation
+3. Interactive CLI interface
+
+### Phase 4 (Long-term): Advanced Features
+1. Toronto-specific pattern recognition
+2. Comprehensive testing pipeline
+3. Error recovery system
+
+## Success Metrics
+
+- **Integration Time**: From 2+ hours to < 5 minutes
+- **Manual Steps**: From 15+ manual steps to 1 command
+- **Error Rate**: < 5% failed integrations
+- **Developer Experience**: One-command integration with preview
+- **Maintenance**: Auto-updates when Toronto Open Data changes
+
+## Technical Debt Considerations
+
+1. **Backward Compatibility**: Ensure existing plugins continue working
+2. **Performance**: Cache API discoveries and coordinate mappings
+3. **Scalability**: Support non-Toronto datasets in the future
+4. **Testing**: Comprehensive test suite for all automation
+5. **Documentation**: Auto-generated docs for new integrations
+
+This comprehensive plan addresses every pain point encountered during the beaches observations integration and provides a roadmap for achieving the vision of seamless one-command dataset integration.

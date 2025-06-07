@@ -21,6 +21,13 @@ export class TorontoBeachesObservationsTransformer implements DataTransformer {
   };
 
   transform(data: any): GeoJSONFeatureCollection {
+    console.log('🏖️ Beach observations transformer called with data:', {
+      type: typeof data,
+      isArray: Array.isArray(data),
+      keys: data && typeof data === 'object' ? Object.keys(data) : null,
+      sampleData: data && Array.isArray(data) ? data[0] : data
+    });
+    
     try {
       // Handle array data directly
       let items: any[] = [];
@@ -35,12 +42,17 @@ export class TorontoBeachesObservationsTransformer implements DataTransformer {
         }
       }
 
+      console.log('🏖️ Extracted items:', items.length, 'records');
+
       if (!Array.isArray(items) || items.length === 0) {
         console.warn('No valid beach observation data found');
         return { type: 'FeatureCollection', features: [] };
       }
 
-      const features: GeoJSONFeature[] = items
+      // Filter and sort to get only the most recent observation for each beach
+      const recentObservations = this.getRecentObservations(items);
+
+      const features: GeoJSONFeature[] = recentObservations
         .map(item => this.createFeature(item))
         .filter(feature => feature !== null) as GeoJSONFeature[];
 
@@ -51,6 +63,57 @@ export class TorontoBeachesObservationsTransformer implements DataTransformer {
     } catch (error) {
       console.error('Error transforming beach observations data:', error);
       return { type: 'FeatureCollection', features: [] };
+    }
+  }
+
+  private getRecentObservations(items: any[]): any[] {
+    // Group observations by beach name
+    const beachGroups: Record<string, any[]> = {};
+    
+    items.forEach(item => {
+      const beachName = item.beachName || item.beach_name || item.name;
+      if (beachName) {
+        if (!beachGroups[beachName]) {
+          beachGroups[beachName] = [];
+        }
+        beachGroups[beachName].push(item);
+      }
+    });
+
+    // For each beach, get the most recent observation
+    const recentObservations: any[] = [];
+    
+    Object.entries(beachGroups).forEach(([beachName, observations]) => {
+      // Sort by date (most recent first)
+      const sortedObservations = observations.sort((a, b) => {
+        const dateA = this.parseDate(a.dataCollectionDate || a.observationDate || a.sampleDate || a.date);
+        const dateB = this.parseDate(b.dataCollectionDate || b.observationDate || b.sampleDate || b.date);
+        
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      // Take the most recent observation
+      if (sortedObservations.length > 0) {
+        recentObservations.push(sortedObservations[0]);
+      }
+    });
+
+    return recentObservations;
+  }
+
+  private parseDate(dateString: any): Date | null {
+    if (!dateString) return null;
+    
+    try {
+      // Handle various date formats
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
     }
   }
 

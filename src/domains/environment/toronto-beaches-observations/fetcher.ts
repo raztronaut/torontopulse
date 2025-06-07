@@ -12,8 +12,19 @@ export class TorontoBeachesObservationsFetcher implements DataFetcher {
   }
 
   async fetch(): Promise<any> {
+    console.log('🏖️ Beach observations fetcher called with URL:', this.baseUrl);
+    
     try {
-      const response = await fetch(this.baseUrl, {
+      // Add query parameters to potentially get more recent data
+      const url = new URL(this.baseUrl);
+      
+      // Add parameters that might help get recent data
+      url.searchParams.set('limit', '1000'); // Get more records to ensure we have recent data
+      url.searchParams.set('sort', 'dataCollectionDate desc'); // Try to sort by date descending
+      
+      console.log('🏖️ Fetching beach observations from:', url.toString());
+      
+      const response = await fetch(url.toString(), {
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'TorontoPulse/1.0'
@@ -25,6 +36,11 @@ export class TorontoBeachesObservationsFetcher implements DataFetcher {
       }
 
       const data = await response.json();
+      console.log('Beach observations data fetched:', {
+        totalRecords: Array.isArray(data) ? data.length : data.result?.records?.length || 0,
+        sampleRecord: Array.isArray(data) ? data[0] : data.result?.records?.[0]
+      });
+      
       return data;
     } catch (error) {
       throw new Error(`Failed to fetch Toronto Beaches Observations data: ${error instanceof Error ? error.message : 'Unknown error'}`);
