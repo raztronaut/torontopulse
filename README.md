@@ -13,6 +13,8 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 ### Real-Time Data Visualization
 - **TTC Live Vehicles**: Track buses and streetcars in real-time
 - **Road Restrictions**: View current road closures and construction zones
+- **Red Light Cameras**: Monitor automated red light enforcement locations across intersections
+- **Speed Enforcement Cameras**: Track automated speed enforcement system locations
 - **Bike Share Stations**: Monitor bike availability across the city
 - **Beach Water Quality**: Check environmental conditions at Toronto beaches
 
@@ -105,7 +107,7 @@ A modern, interactive 3D city dashboard for Toronto built with React, TypeScript
 
 ### Dashboard Modes
 - **Transit**: Focus on public transportation and bike sharing
-- **Infrastructure**: View road conditions and construction
+- **Infrastructure**: View road conditions, construction, traffic enforcement cameras, and speed cameras
 - **Environment**: Monitor environmental data like beach water quality
 - **All Data**: Display all available layers simultaneously
 - **Custom**: Manual layer selection mode
@@ -148,7 +150,7 @@ npm run tp generate:datasource \
 # Result: Complete, working plugin with zero manual fixes required! 🎉
 ```
 
-**Current Status**: 5/5 plugins healthy with automatic CORS resolution
+**Current Status**: 7/7 plugins healthy with automatic CORS resolution
 
 📚 **For complete CLI documentation and advanced features, see [CLI-Documentation.md](./CLI-Documentation.md)**
 
@@ -170,7 +172,10 @@ torontopulse/
 │   │   └── utils/            # Utility functions
 │   ├── domains/              # 🆕 Business domain plugins
 │   │   ├── transportation/   # Transit and mobility data
-│   │   ├── infrastructure/   # Roads and city infrastructure
+│   │   ├── infrastructure/   # Roads, traffic enforcement, and city infrastructure
+│   │   │   ├── red-light-cameras/           # Red light camera locations
+│   │   │   ├── automated-speed-enforcement/ # Speed enforcement camera locations
+│   │   │   └── road-restrictions/           # Road closures and construction
 │   │   ├── environment/      # Environmental data
 │   │   └── events/           # City events and emergencies
 │   ├── infrastructure/       # 🆕 External integrations
@@ -256,7 +261,7 @@ This project follows modern React and TypeScript best practices:
 
 This project integrates data from multiple Toronto city services:
 
-- **Toronto Open Data Portal**: Public datasets including road restrictions, bike share stations, and beach water quality
+- **Toronto Open Data Portal**: Public datasets including road restrictions, bike share stations, beach water quality, red light cameras, and automated speed enforcement locations
 - **TTC Real-Time Feed**: Live vehicle positions for buses and streetcars
 - **Mapbox**: Base map tiles and geospatial services
 
